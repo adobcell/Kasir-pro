@@ -153,7 +153,7 @@ var HEAD={
 
 function defaultCfg(){return{id:'main',shop:'ADOB CELL',addr:'',phone:'',warrantyDays:30,
  terms:'Garansi tidak berlaku untuk kerusakan akibat terjatuh, terkena cairan, segel rusak, atau pembongkaran oleh pihak lain.',
- paid:{},rajinCheck:{},adminUnitFee:4000,adminOmzetRate:1,rajinRate:2,ownerPhone:'',ownerPinH:'',
+ paid:{},rajinCheck:{},adminUnitFee:4000,adminOmzetRate:1,rajinRate:2,ownerPhone:'',ownerPinH:'',sopRev:0,sopDays:30,
  staff:[{id:'adm',name:'Admin Depan',role:'admin',base:1500000,share:0,fee:0},
   {id:'t-int',name:'Teknisi 1',role:'interface',base:0,share:30,fee:2},
   {id:'t-exp',name:'Teknisi 2',role:'expert',base:0,share:40,fee:2}]};}
@@ -335,6 +335,7 @@ async function syncNow(manual){
    o.updated=d.updated;if(d.deleted)o.deleted=true;DOCS[d.k]=o;persist(d.k);delete SYNC.pending[d.k];changed=true;});
   SYNC.since=maxU;SYNC.last=Date.now();SYNC.state='idle';SYNC.err='';saveSync();
   if(changed)rebuild();
+  if(isTech())sopFlush();
   if(manual)toast('Sinkronisasi selesai.');
  }catch(e){
   SYNC.state='error';SYNC.err=(e&&e.message)||'gagal';
@@ -553,18 +554,18 @@ function waOwner(t,cl){
 
 function refundBanner(){var L=refundDue();if(!L.length)return'';
  return'<section class="card stack" style="border-color:var(--bad)"><strong>⚠ '+L.length+' refund garansi menunggu dikembalikan ke pelanggan</strong>'+L.map(function(x){return'<span class="small">'+esc(x.t.no)+' · '+esc(x.t.customer||'-')+' · '+esc(x.t.device)+' · '+rp(calc(x.t).total)+'</span>';}).join('')+'<span class="small muted">Buka nota di tab Nota, lalu tekan "Tandai uang sudah dikembalikan" setelah uang diserahkan.</span></section>';}
-var ADMIN_TABS=['kasir','riwayat','gaji','biaya','laporan','atur'],TECH_TABS=['t-ringkas','t-kerja','t-kasbon'];
+var ADMIN_TABS=['kasir','riwayat','gaji','biaya','laporan','atur'],TECH_TABS=['t-ringkas','t-kerja','t-kasbon','t-sop'];
 function view(){
- var f={kasir:vKasir,riwayat:vNota,gaji:vGaji,biaya:vBiaya,laporan:vLaporan,atur:vAtur,'t-ringkas':vTekRingkas,'t-kerja':vTekKerja,'t-kasbon':vTekKasbon}[tab];
+ var f={kasir:vKasir,riwayat:vNota,gaji:vGaji,biaya:vBiaya,laporan:vLaporan,atur:vAtur,'t-ringkas':vTekHome,'t-kerja':vTekKerja,'t-kasbon':vTekKasbon,'t-sop':vTekSop}[tab];
  /* Pengaman: teknisi tidak pernah bisa membuka halaman admin, walau variabel tab diubah dari luar. */
- if(isTech()&&TECH_TABS.indexOf(tab)<0){tab='t-ringkas';f=vTekRingkas;}
+ if(isTech()&&TECH_TABS.indexOf(tab)<0){tab='t-ringkas';f=vTekHome;}
  if(isAdmin()&&ADMIN_TABS.indexOf(tab)<0){tab='kasir';f=vKasir;}
  try{return((tab==='kasir'||tab==='riwayat')?refundBanner():'')+f();}catch(e){return'<section class="card stack"><strong>Halaman gagal dimuat</strong><span class="small muted">'+esc(e&&e.message)+'</span><div><button class="btn sm" data-act="tab" data-v="'+(isTech()?'t-ringkas':'kasir')+'">Kembali</button></div></section>';}}
 function whoBar(){
  if(AUTH.local)return'<span class="small muted">Mode lokal</span>';
  return'<span class="row" style="gap:6px;flex-wrap:nowrap"><span class="small muted" style="text-align:right;line-height:1.2">'+esc(AUTH.name||AUTH.user)+(String(AUTH.name||'').toLowerCase()===(isTech()?'teknisi':'admin')?'':'<br>'+(isTech()?'Teknisi':'Admin'))+'</span><button class="btn sm'+(logoutArmed?' armed':'')+'" data-act="logout">'+(logoutArmed?'Yakin keluar?':'Keluar')+'</button></span>';}
 function shell(){
- var tabs=isTech()?[['t-ringkas','Ringkasan'],['t-kerja','Pekerjaan'],['t-kasbon','Kasbon']]:[['kasir','Input Data'],['riwayat','Nota'],['gaji','Gaji'],['biaya','Biaya'],['laporan','Laporan'],['atur','Atur']];
+ var tabs=isTech()?[['t-ringkas','Ringkasan'],['t-kerja','Pekerjaan'],['t-kasbon','Kasbon'],['t-sop','SOP']]:[['kasir','Input Data'],['riwayat','Nota'],['gaji','Gaji'],['biaya','Biaya'],['laporan','Laporan'],['atur','Atur']];
  var showMon=['gaji','biaya','laporan','t-ringkas','t-kerja','t-kasbon'].indexOf(tab)>=0||(tab==='riwayat'&&(flt==='bulan'||flt==='batal')),sl=syncLabel();
  return'<div class="wrap"><header class="top"><div><h1>'+esc(cfg.shop)+'</h1><button class="sub '+sl.c+'" data-act="'+(isTech()?'sy-now':'go-sheets')+'"><span class="dot"></span>'+esc(sl.t)+'</button></div>'+whoBar()+
   (showMon?'<div class="mon" style="flex-basis:100%;justify-content:center"><button data-act="mon" data-v="-1" aria-label="Bulan sebelumnya">‹</button><strong>'+mlabel(month)+'</strong><button data-act="mon" data-v="1" aria-label="Bulan berikutnya">›</button></div>':'')+
@@ -586,7 +587,7 @@ function loginHTML(){
 function render(){
  var ae=document.activeElement,id=ae&&ae.id,ss=null,se=null,y=window.scrollY;
  try{ss=ae.selectionStart;se=ae.selectionEnd;}catch(e){}
- document.getElementById('app').innerHTML=AUTH?shell():loginHTML();
+ document.getElementById('app').innerHTML=AUTH?(needSop()?sopGateHTML():shell()):loginHTML();sopStart();
  if(id){var el=document.getElementById(id);if(el){el.focus({preventScroll:true});try{if(ss!=null)el.setSelectionRange(ss,se);}catch(e){}}}
  window.scrollTo(0,y);initSigPad();}
 var tt;function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(function(){t.classList.remove('on');},3800);}
@@ -855,6 +856,144 @@ function vTekKerja(){
  L.map(function(t){var c=calc(t),o2=openTx===t.id,done=isActive(t)&&isFin(t);
   return'<div class="tx'+(isActive(t)?'':' cancelled')+'"><button class="tx-h" data-act="tek-toggle" data-v="'+esc(t.id)+'" aria-expanded="'+o2+'"><span class="tx-title"><strong class="num">'+esc(t.no)+'</strong> <span class="muted small">'+fdate(t.date)+'</span><br>'+esc(t.device||'Perangkat')+(t.customer?' <span class="muted">· '+esc(t.customer)+'</span>':'')+(t.complaint?'<br><span class="muted small">'+esc(t.complaint)+'</span>':'')+'</span><span class="num"><strong class="'+(done?'pos':'muted')+'">'+(done?rp(c.tech):'—')+'</strong><br><span class="muted small">'+(done?'hasil Anda':'belum selesai')+'</span></span></button><div class="row">'+statusBadge(t)+refBadge(t)+'</div>'+(o2?tekDetail(t):'')+'</div>';}).join('')+'</section>';
  return h;}
+
+/* ===== SOP wajib baca untuk teknisi ===== */
+/* Naikkan SOP_VER bila isi SOP di bawah diubah, agar semua teknisi wajib membaca ulang. Admin juga bisa memaksa lewat Atur > SOP. */
+var SOP_VER='1',SOP_MIN=20,sopOn=false,sopT=null;
+var sopD={quiz:{},checked:false,t0:0,reached:false,busy:false,checking:false,err:''},SOPL={list:null,busy:false,err:''};
+var SOP_RULES=['Lakukan QC lengkap (layar, sentuh, kamera, sinyal, charger, speaker, mic) sebelum unit diserahkan ke admin.',
+ 'Hapus catatan pola/PIN pelanggan begitu unit selesai. Jangan disimpan untuk jaga-jaga.',
+ 'Jangan membuka chat, galeri, atau kontak pelanggan. Data pelanggan adalah milik pelanggan.',
+ 'Foto kondisi unit sebelum dibongkar, dan simpan komponen lama sampai unit diambil.',
+ 'Biaya tambahan di luar estimasi hanya dikerjakan setelah pelanggan setuju lewat admin.',
+ 'Ada unit rusak atau kecelakaan kerja? Lapor ke Owner saat itu juga. Jujur selalu lebih ringan sanksinya.',
+ 'Tolak lupa pola atau akun Google tanpa bukti kepemilikan. Jelaskan dengan sopan.',
+ 'Perbarui status nota tepat waktu supaya pelanggan tidak menunggu tanpa kabar.',
+ 'Pakai kacamata dan sarung tangan saat hot air atau solder. Jauhkan baterai kembung dari panas.',
+ 'Dilarang menerima tip atau pembayaran di luar nota resmi.',
+ 'Jaga kebersihan meja kerja: rapikan komponen kecil agar tidak tercampur antar unit.'];
+var SOP_QUIZ=[
+ {q:'Pelanggan lupa pola dan tidak bisa menunjukkan bukti kepemilikan. Apa yang Anda lakukan?',o:['Tetap dibuka agar cepat selesai','Tolak dengan sopan dan jelaskan prosedur verifikasi','Minta unit dititipkan lalu dibuka sendiri'],a:1,why:'Tanpa bukti kepemilikan, unit tidak boleh dibuka kuncinya.'},
+ {q:'Setelah unit selesai, catatan pola atau sandi pelanggan harus…',o:['Dihapus','Disimpan untuk jaga-jaga','Difoto sebagai arsip'],a:0,why:'Data kunci layar wajib dihapus setelah selesai.'},
+ {q:'Anda tidak sengaja merusak komponen unit saat membongkar. Yang benar adalah…',o:['Diam-diam mengganti komponen','Menyalahkan kondisi unit sejak awal','Lapor jujur ke Owner saat itu juga'],a:2,why:'Lapor segera. Menutupi kesalahan membuat sanksi lebih berat.'},
+ {q:'Biaya tambahan di luar estimasi awal boleh dikerjakan setelah…',o:['Teknisi yakin itu diperlukan','Pelanggan menyetujui lewat admin','Unit sudah selesai'],a:1,why:'Persetujuan biaya dari pelanggan wajib sebelum pengerjaan.'}];
+
+function sopNeed(){return SOP_VER+'.'+(+cfg.sopRev||0);}
+function sopRec(){try{return JSON.parse(localStorage.getItem('kp-sop-'+(AUTH&&AUTH.user))||'null');}catch(e){return null;}}
+function sopSaveRec(r){try{localStorage.setItem('kp-sop-'+AUTH.user,JSON.stringify(r));}catch(e){}}
+function sopDays(){var d=cfg.sopDays;return d==null?30:+d||0;}
+function sopFresh(r,days){return !!r&&r.ver===sopNeed()&&(!days||(Date.now()-(+r.at||0))<days*86400000);}
+function sopOKv(){return sopFresh(sopRec(),sopDays());}
+function needSop(){return isTech()&&!sopOKv();}
+function sopLeft(){var r=sopRec(),d=sopDays();if(!r||!d||r.ver!==sopNeed())return null;return Math.ceil((r.at+d*86400000-Date.now())/86400000);}
+function sopBoot(){
+ /* Ambil status baca dari server (agar perangkat kedua tidak diminta ulang); jika gagal, pakai catatan di perangkat. */
+ if(!hasServer())return;
+ sopD.checking=true;
+ var tm=new Promise(function(res){setTimeout(function(){res(null);},7000);});
+ Promise.race([api({action:'sop_me'}).catch(function(){return null;}),tm]).then(function(r){
+  sopD.checking=false;
+  if(r&&r.ok&&r.ver){var loc=sopRec();if(!loc||(+r.at||0)>(+loc.at||0))sopSaveRec({ver:r.ver,at:+r.at||Date.now()});}
+  render();sopFlush();});}
+function sopFlush(){
+ var r=sopRec();if(!r||!r.pending||!hasServer())return;
+ api({action:'sop_ack',ver:r.ver}).then(function(x){if(x&&x.ok){var c=sopRec();if(c&&c.pending&&c.ver===r.ver)sopSaveRec({ver:c.ver,at:+x.at||c.at});}}).catch(function(){});}
+function sopAck(){
+ if(sopD.busy||!sopReady())return;
+ sopD.busy=true;sopD.err='';sopUpdate();
+ var need=sopNeed();
+ var done=function(rec,msg){sopD.busy=false;sopSaveRec(rec);sopD.quiz={};sopD.checked=false;sopD.reached=false;sopD.t0=0;tab='t-ringkas';render();window.scrollTo(0,0);toast(msg);};
+ api({action:'sop_ack',ver:need}).then(function(r){
+  if(r&&r.ok)done({ver:need,at:+r.at||Date.now()},'Terima kasih. Persetujuan SOP Anda tercatat.');
+  else if(r&&r.error==='auth'){sopD.busy=false;sessionExpired();}
+  else done({ver:need,at:Date.now(),pending:true},'Tersimpan di perangkat. Server belum diperbarui atau sedang tidak terjangkau.');
+ }).catch(function(){done({ver:need,at:Date.now(),pending:true},'Tersimpan di perangkat dan akan dikirim saat tersambung internet.');});}
+
+function sopTeknisi(){
+ var me=isTech()?staff(AUTH.staffId):null,s=me||{share:0,fee:0},lv=s.role==='expert'?'Expert (Lv.3)':'Interface (Lv.2)';
+ return'<div style="line-height:1.65">'+
+ '<h3>1. Etika &amp; data pelanggan</h3><ul><li>Sopan, jujur, dan bertanggung jawab kepada pelanggan dan rekan kerja.</li><li>Dilarang membuka, menyalin, memotret, atau menyebarkan data pelanggan (chat, galeri, kontak, sandi). Pelanggaran dapat diproses hukum (UU PDP No. 27/2022).</li><li>Pola/PIN pelanggan hanya untuk uji perbaikan dan <b>wajib dihapus setelah unit selesai</b>.</li><li>Dilarang menerima tip atau pembayaran di luar nota resmi.</li></ul>'+
+ '<h3>2. Alur kerja unit</h3><ul><li>Status nota: Diterima → Dikerjakan → Menunggu konfirmasi → Selesai → Diambil. Perbarui status tepat waktu.</li><li>Lakukan diagnosa dan catat temuan sebelum eksekusi. Biaya tambahan di luar estimasi <b>hanya dikerjakan setelah pelanggan setuju</b> lewat admin.</li><li>Foto kondisi unit sebelum dibongkar. Simpan komponen lama sampai unit diambil.</li><li>Satu unit satu nampan: jangan mencampur komponen antar unit.</li></ul>'+
+ '<h3>3. Standar mutu (QC)</h3><ul><li>Sebelum diserahkan ke admin, uji: layar &amp; sentuh, kamera, sinyal/WiFi/Bluetooth, charger, speaker, mic, sensor dasar.</li><li>Unit yang kembali karena pekerjaan yang sama (rework) tercatat sebagai klaim garansi dan memengaruhi bonus rajin.</li></ul>'+
+ '<h3>4. Keselamatan kerja</h3><ul><li>Pakai kacamata dan sarung tangan saat hot air atau solder. Pastikan ruangan berventilasi.</li><li>Baterai kembung, bocor, atau panas: jauhkan dari panas dan benda tajam, jangan ditekan. Lapor ke Owner.</li><li>Cabut baterai sebelum membongkar board. Pakai gelang atau alas anti-statis bila tersedia.</li><li>Kecelakaan kerja (luka, sengatan, korsleting) segera dilaporkan dan diberi pertolongan pertama.</li></ul>'+
+ '<h3>5. Kerusakan &amp; kelalaian</h3><ul><li>Unit rusak karena kelalaian: <b>lapor ke Owner saat itu juga</b>. Menutupi kesalahan membuat sanksi lebih berat.</li><li>Nilai ganti rugi dihitung dari bukti kerusakan dan dibicarakan bersama. Pemotongan bagi hasil sesuai nilai kerusakan dan tidak boleh merugikan secara sepihak.</li></ul>'+
+ '<h3>6. Lupa pola/PIN &amp; akun Google (FRP)</h3><ul><li>Wajib verifikasi pemilik: KTP/SIM sesuai nama nota, atau kotak/nota pembelian. Tanpa bukti kepemilikan: <b>TOLAK</b> dengan sopan.</li><li>Pelanggan wajib tanda tangan digital: paham reset dapat menghapus seluruh data.</li><li>Toko TIDAK melayani bypass akun Google (FRP) dan tidak login ke akun pelanggan (UU ITE Pasal 30).</li></ul>'+
+ '<h3>7. Garansi &amp; klaim</h3><ul><li>Klaim garansi dicatat admin dan menunggu persetujuan Owner. Unit yang tidak bisa diperbaiki dapat berakhir refund penuh: bagi hasil unit itu dibatalkan di bulan refund.</li><li>Garansi tidak berlaku untuk kerusakan akibat jatuh, cairan, segel rusak, atau pembongkaran pihak lain.</li></ul>'+
+ '<h3>8. Penghasilan &amp; kasbon</h3><ul><li>'+(me?'Anda ('+lv+'): tanpa gaji pokok. Bagi hasil <b>'+pct(s.share)+'</b> dari laba bersih unit + fee <b>'+pct(s.fee)+'</b> dari bagian toko, dihitung dari unit yang <b>selesai</b>.':'Teknisi: tanpa gaji pokok. Bagi hasil dan fee sesuai tarif masing-masing (tiap teknisi hanya melihat tarifnya sendiri).')+'</li><li>Rincian penghasilan dan kasbon Anda selalu bisa dilihat di tab Ringkasan dan Kasbon.</li><li>Kasbon hanya melalui Owner dan dipotong dari penghasilan. Dilarang mengambil uang laci atau nota di luar prosedur.</li><li>Bonus rajin diberikan Owner bila: full hadir (izin maks 1x), telat maks 2x, zero rework, tidak ada nota menggantung lebih dari 7 hari.</li></ul>'+
+ '<h3>9. Kehadiran &amp; kebersihan</h3><ul><li>Datang tepat waktu; izin disampaikan ke Owner sebelum jam kerja.</li><li>Pagi: lap meja kerja. Tutup: rapikan alat, buang sampah, simpan unit di tempat aman.</li><li>Dilarang makan/minum di meja servis dan merokok di dalam toko.</li></ul>'+
+ '<h3>10. Sanksi</h3><ul><li>Menyebarkan data pelanggan: SP3 dan proses hukum. Tip tanpa nota: SP1 dan pengembalian. Kerusakan karena kelalaian: potong bagi hasil sesuai nilai kerusakan. Menutupi kesalahan: sanksi bertambah.</li></ul>'+
+ '<p class="small muted" style="margin:10px 0 0">Ketentuan hukum di atas bersifat umum. Pertanyaan tentang SOP: tanyakan ke Owner.</p></div>';}
+
+function sopRuleToday(){var d=new Date(),j=Math.floor((d-new Date(d.getFullYear(),0,0))/86400000);return SOP_RULES[j%SOP_RULES.length];}
+function sopCard(){
+ var left=sopLeft(),r=sopRec(),soon=left!=null&&left<=3;
+ return'<section class="card stack" style="border-color:var(--accent)"><div class="row sb"><strong>📌 Pengingat SOP hari ini</strong>'+(r?'<span class="badge '+(soon?'warn':'good')+'">'+(soon?'Baca ulang '+(left<=0?'hari ini':left+' hari lagi'):'SOP terkini ✔')+'</span>':'')+'</div>'+
+ '<span>'+esc(sopRuleToday())+'</span><div><button class="btn sm" data-act="tab" data-v="t-sop">Buka SOP lengkap</button></div></section>';}
+function vTekHome(){return sopCard()+vTekRingkas();}
+function vTekSop(){
+ var r=sopRec(),d=sopDays(),left=sopLeft();
+ var h='<section class="card stack"><h2>SOP &amp; tata tertib '+esc(cfg.shop)+'</h2><div class="row" style="gap:8px">'+
+  '<span class="badge '+(r&&r.ver===sopNeed()?'good':'warn')+'">'+(r&&r.ver===sopNeed()?'Sudah dibaca '+fdate(iso(new Date(r.at))):'Belum dibaca')+'</span>'+
+  (d?'<span class="badge mute">Baca ulang tiap '+d+' hari'+(left!=null?' · sisa '+Math.max(0,left)+' hari':'')+'</span>':'')+(r&&r.pending?'<span class="badge warn">Menunggu terkirim ke server</span>':'')+'</div>'+
+  '<span class="small muted">Hormati SOP ini setiap hari. Persetujuan Anda tercatat dan dilihat Owner.</span></section>';
+ h+='<section class="card stack"><h3>Aturan emas</h3><ol style="margin:0;padding-left:1.2rem;line-height:1.6">'+SOP_RULES.slice(0,6).map(function(x){return'<li>'+esc(x)+'</li>';}).join('')+'</ol></section>';
+ return h+'<section class="card">'+sopTeknisi()+'</section>';}
+
+function sopReady(){
+ var qok=SOP_QUIZ.every(function(q,i){return sopD.quiz[i]!=null&&+sopD.quiz[i]===q.a;});
+ var sec=Math.max(0,SOP_MIN-Math.floor((Date.now()-(sopD.t0||Date.now()))/1000));
+ return sopD.reached&&qok&&sopD.checked&&sec===0&&!sopD.busy;}
+function sopGateHTML(){
+ if(!sopD.t0)sopD.t0=Date.now();
+ var who=esc(AUTH.name||AUTH.user);
+ if(sopD.checking)return'<div class="wrap"><section class="card stack" style="margin-top:2rem"><h2>Memeriksa status SOP…</h2><span class="muted small">Mohon tunggu sebentar.</span></section></div>';
+ var r=sopRec(),again=r&&r.ver===sopNeed();
+ var h='<div class="wrap" style="padding-bottom:7rem"><header class="top"><div><h1>'+esc(cfg.shop)+'</h1><span class="small muted">SOP wajib dibaca</span></div>'+whoBar()+'</header><main>'+
+  '<section class="card stack"><h2>Halo, '+who+'</h2><span>'+(again?'Sudah waktunya membaca ulang SOP (rutin setiap '+sopDays()+' hari).':(r?'SOP telah diperbarui.':'Sebelum bekerja, mohon baca SOP berikut sampai selesai.'))+' Setelah itu jawab pertanyaan singkat dan beri persetujuan.</span></section>'+
+  '<section class="card">'+sopTeknisi()+'</section>'+
+  '<section class="card stack"><h2>Cek pemahaman</h2><span class="small muted">Jawab semua dengan benar untuk melanjutkan.</span>'+
+  SOP_QUIZ.map(function(q,i){var cur=sopD.quiz[i];
+   return'<div class="box"><strong>'+(i+1)+'. '+esc(q.q)+'</strong>'+q.o.map(function(o,k){return'<label style="display:flex;flex-direction:row;align-items:flex-start;gap:10px;cursor:pointer;margin-top:10px;font-size:.95rem"><input type="radio" name="sq'+i+'" data-sq="'+i+'" value="'+k+'" style="width:auto;flex:none;margin:3px 0 0"'+(cur!=null&&+cur===k?' checked':'')+'><span style="flex:1">'+esc(o)+'</span></label>';}).join('')+'<span id="sq-fb-'+i+'" class="small" style="display:block;margin-top:6px"></span></div>';}).join('')+
+  '<label style="display:flex;flex-direction:row;align-items:flex-start;gap:10px;cursor:pointer;margin-top:4px"><input type="checkbox" data-sopchk="1" style="width:auto;flex:none;margin:3px 0 0"'+(sopD.checked?' checked':'')+'><span style="flex:1">Saya sudah membaca, memahami, dan akan mematuhi SOP '+esc(cfg.shop)+'.</span></label></section></main>'+
+  '<div style="position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:10px 16px;z-index:5"><div class="wrap stack" style="gap:6px"><span id="sop-prog" class="small muted"></span><button id="sop-btn" class="btn pri" data-act="sop-ack" disabled>Saya setuju &amp; lanjut</button></div></div></div>';
+ return h;}
+function sopUpdate(){
+ if(!sopOn)return;
+ var de=document.documentElement,left=de.scrollHeight-(window.scrollY+window.innerHeight);
+ if(left<90)sopD.reached=true;
+ var sec=Math.max(0,SOP_MIN-Math.floor((Date.now()-(sopD.t0||Date.now()))/1000));
+ var okq=0;SOP_QUIZ.forEach(function(q,i){var fb=document.getElementById('sq-fb-'+i),cur=sopD.quiz[i];
+  if(cur!=null&&+cur===q.a)okq++;
+  if(fb){fb.textContent=cur==null?'':(+cur===q.a?'✔ Benar. '+q.why:'✖ Belum tepat, coba lagi.');fb.style.color=cur==null?'':(+cur===q.a?'var(--good)':'var(--bad)');}});
+ var need=[];if(!sopD.reached)need.push('gulir sampai bawah');if(sec>0)need.push('tunggu '+sec+' dtk');if(okq<SOP_QUIZ.length)need.push('jawab benar '+okq+'/'+SOP_QUIZ.length);if(!sopD.checked)need.push('centang persetujuan');
+ var pg=document.getElementById('sop-prog'),bt=document.getElementById('sop-btn');
+ if(pg)pg.textContent=sopD.busy?'Menyimpan…':(need.length?'Tersisa: '+need.join(' · '):'Semua syarat terpenuhi.');
+ if(bt)bt.disabled=!sopReady();}
+function sopStart(){
+ var on=!!AUTH&&needSop()&&!sopD.checking;
+ if(on&&!sopOn){sopOn=true;clearInterval(sopT);sopT=setInterval(sopUpdate,1000);}
+ if(!on&&sopOn){sopOn=false;clearInterval(sopT);}
+ if(on)setTimeout(sopUpdate,0);}
+
+function sopLoad(){
+ if(!hasServer()){SOPL.err='Belum terhubung ke server.';render();return;}
+ SOPL.busy=true;SOPL.err='';render();
+ api({action:'sop_list'}).then(function(r){SOPL.busy=false;if(r&&r.ok)SOPL.list=r.list||[];else if(r&&r.error==='auth'){sessionExpired();return;}else SOPL.err=/^(action|forbidden)$/.test((r&&r.error)||'')?'Skrip Google di server belum versi terbaru. Tempel Code.gs terbaru lalu Deploy versi baru.':'Gagal memuat.';render();})
+ .catch(function(){SOPL.busy=false;SOPL.err='Tidak dapat menghubungi server.';render();});}
+function sopAdminCard(){
+ var need=sopNeed(),days=sopDays();
+ var h='<section class="card stack"><h2>Kepatuhan baca SOP teknisi</h2><span class="small muted">Teknisi wajib membaca SOP, menjawab cek pemahaman, lalu menyetujui sebelum bisa melihat data mereka. Persetujuan tercatat di sheet "SOP Baca".</span>'+
+  '<label class="f">Wajib baca ulang tiap (hari, 0 = hanya saat SOP diperbarui)<input id="c-sopdays" type="number" min="0" step="1" data-c="sopDays" value="'+esc(String(days))+'"></label>';
+ if(SOPL.busy)h+='<span class="muted small">Memuat status…</span>';
+ if(SOPL.err)h+='<div class="badge bad" role="alert" style="white-space:normal">'+esc(SOPL.err)+'</div>';
+ if(SOPL.list){
+  if(!SOPL.list.length)h+='<span class="muted small">Belum ada akun teknisi. Buat di Atur › Pengguna.</span>';
+  SOPL.list.forEach(function(u){
+   var rec=u.ver?{ver:u.ver,at:u.at}:null,ok=sopFresh(rec,days),old=!!rec&&rec.ver!==need,st=!rec?['bad','Belum pernah membaca']:ok?['good','Terkini']:old?['warn','SOP diperbarui, belum dibaca ulang']:['warn','Waktunya baca ulang'];
+   h+='<div class="row sb"><span><strong>'+esc(u.name||u.username)+'</strong><br><span class="muted small">'+(rec&&rec.at?'Terakhir: '+fdate(iso(new Date(rec.at))):'—')+'</span></span><span class="badge '+st[0]+'" style="white-space:normal;text-align:right">'+st[1]+'</span></div>';});}
+ h+='<div class="row"><button class="btn sm" data-act="sop-load">Muat ulang status</button><button class="btn sm danger" data-act="sop-bump">Wajibkan semua baca ulang</button></div>'+
+  '<details><summary class="small">Lihat tampilan SOP yang dibaca teknisi</summary>'+sopTeknisi()+'</details></section>';
+ return h;}
 function vTekKasbon(){
  var sid=AUTH.staffId,L=kass.filter(function(k){return k.staffId===sid;}).sort(function(a,b){return String(b.date).localeCompare(String(a.date))||((b.updated||0)-(a.updated||0));});
  var bal=kasBal(sid),tk=0,tp=0;L.forEach(function(k){if(k.kind==='potong')tp+=+k.amount||0;else tk+=+k.amount||0;});
@@ -990,6 +1129,7 @@ function aturBody(){
   '<div class="row"><button class="btn" data-act="backup">Unduh cadangan (.json)</button><label class="btn" for="restore-file" style="cursor:pointer">Pulihkan dari cadangan</label><input id="restore-file" type="file" accept=".json,application/json" hidden></div>'+
   '<p class="muted small" style="margin:0">Cadangan berisi seluruh data termasuk sandi/pola layar pelanggan. Simpan di tempat aman.</p></section>'+
   '<section class="card stack"><h2>Data contoh</h2><div class="row"><button class="btn" data-act="sample">Isi data contoh</button><button class="btn danger" data-act="rm-sample">Hapus data contoh</button></div></section>';}
+ if(aturTab==='sop')h+=sopAdminCard();
  if(aturTab==='sop')h+='<section class="card stack"><h2>SOP &amp; tata tertib '+esc(cfg.shop)+'</h2><span class="badge '+(PREFS.sopSetujui?'good':'warn')+'">'+(PREFS.sopSetujui?'SOP sudah disetujui di perangkat ini':'Belum menyetujui SOP')+'</span>'+sopContent()+'</section>';
  return h;}
 function vAtur(){
@@ -1127,7 +1267,7 @@ function act(a,el){
   else if(a==='login-local'){AUTH={role:'admin',local:true,user:'lokal',name:'Admin (lokal)',session:''};saveAuth();location.reload();}
   return;}
  /* Akun teknisi: hanya boleh melihat. Tindakan lain diabaikan walau tombolnya dipaksa muncul. */
- if(isTech()&&['tab','mon','tek-toggle','sy-now','logout'].indexOf(a)<0)return;
+ if(isTech()&&['tab','mon','tek-toggle','sy-now','logout','sop-ack'].indexOf(a)<0)return;
  if(a==='logout')doLogout();
  else if(a==='tek-toggle'){openTx=openTx===v?null:v;render();}
  else if(a==='usr-reload')usrLoad();
@@ -1140,7 +1280,10 @@ function act(a,el){
  else if(a==='tab'){tab=v;armed=null;if(v==='riwayat'&&dayAuto)day=iso(new Date());render();window.scrollTo(0,0);}
  else if(a==='go-sheets'){tab='atur';aturTab='sheets';render();window.scrollTo(0,0);}
  else if(a==='hint-off'){PREFS.hint=true;savePrefs();render();}
- else if(a==='atur'){aturTab=v;if(v==='pengguna'&&hasServer()&&!USR.list&&!USR.busy)usrLoad();else render();}
+ else if(a==='atur'){aturTab=v;if(v==='pengguna'&&hasServer()&&!USR.list&&!USR.busy)usrLoad();else if(v==='sop'&&hasServer()&&!SOPL.list&&!SOPL.busy)sopLoad();else render();}
+ else if(a==='sop-ack')sopAck();
+ else if(a==='sop-load')sopLoad();
+ else if(a==='sop-bump'){cfg.sopRev=(+cfg.sopRev||0)+1;saveCfg();render();toast('Semua teknisi wajib membaca SOP ulang saat berikutnya membuka aplikasi.');}
  else if(a==='mon'){var p=month.split('-'),d=new Date(+p[0],+p[1]-1+(+v),1);month=iso(d).slice(0,7);openTx=null;render();}
  else if(a==='flt'){flt=v;openTx=null;armed=null;render();}
  else if(a==='dnav'){day=addDays(day,+v);dayAuto=(day===iso(new Date()));openTx=null;render();}
@@ -1285,6 +1428,8 @@ document.addEventListener('keydown',function(e){if(e.key==='Enter'&&!AUTH&&e.tar
 document.addEventListener('change',function(e){
  var el=e.target,ds=el.dataset;
  if(ds.lgShow!==undefined){loginD.show=el.checked;render();return;}
+ if(ds.sq!==undefined){sopD.quiz[ds.sq]=el.value;sopUpdate();return;}
+ if(ds.sopchk!==undefined){sopD.checked=!!el.checked;sopUpdate();return;}
  if(!isAdmin())return;
  if(el.id==='restore-file'){if(el.files&&el.files[0])restoreFile(el.files[0]);el.value='';return;}
  if(ds.money!==undefined)return;
@@ -1295,7 +1440,7 @@ document.addEventListener('change',function(e){
  else if(ds.p){var pk=ds.p;if(pk==='autoPrint')PREFS.autoPrint=el.value==='1';else if(pk==='pmode')PREFS.pmode=el.value;else PREFS[pk]=+el.value;savePrefs();render();}
  else if(ds.c){var k2=ds.c;
   if(k2==='ownerPin'){var pv=el.value.trim();if(pv){if(!/^\d{4,8}$/.test(pv)){toast('PIN harus 4–8 angka.');el.value='';return;}cfg.ownerPinH=hashPin(pv);toast('PIN Owner disimpan.');}}
-  else if(k2==='warrantyDays'||k2==='adminOmzetRate'||k2==='rajinRate')cfg[k2]=Math.max(0,num(el.value));
+  else if(k2==='warrantyDays'||k2==='adminOmzetRate'||k2==='rajinRate'||k2==='sopDays')cfg[k2]=Math.max(0,Math.round(num(el.value)));
   else if(k2==='shop')cfg.shop=el.value.trim()||cfg.shop;
   else cfg[k2]=el.value.trim();
   saveCfg();render();toast('Pengaturan tersimpan.');}
@@ -1307,6 +1452,8 @@ document.addEventListener('change',function(e){
 window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();installEv=e;if(tab==='atur'&&!typing())render();});
 window.addEventListener('online',function(){syncNow(false);});
 window.addEventListener('offline',function(){SYNC.state='offline';statusRefresh();});
+window.addEventListener('scroll',function(){if(sopOn)sopUpdate();},{passive:true});
+window.addEventListener('online',function(){if(isTech())sopFlush();});
 document.addEventListener('visibilitychange',function(){
  if(document.visibilityState!=='visible')return;
  var td=iso(new Date());if(dayAuto&&day!==td){day=td;if(!typing())render();}
@@ -1321,7 +1468,7 @@ async function boot(){
   if(location.search)history.replaceState(null,'',location.pathname+location.hash);}catch(e){}
  loadAuth();loadSync();
  if(!AUTH){render();return;}
- if(isTech())tab='t-ringkas';
+ if(isTech()){tab='t-ringkas';sopBoot();}
  render();
  var rows=[];
  try{IDB=await idbOpen();rows=await idbAll();}
