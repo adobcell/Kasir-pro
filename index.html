@@ -160,7 +160,16 @@ function defaultCfg(){return{id:'main',shop:'ADOB CELL',addr:'',phone:'',warrant
 function defaultPrefs(){return{theme:'auto',fs:'m',paper:32,pmode:'img',autoPrint:false,chunk:100,btName:'',hint:false,sopSetujui:false};}
 
 var cfg=defaultCfg(),txs=[],exps=[],kass=[],DOCS={},IDB=null,PREFS=defaultPrefs();
-var SYNC={url:'',token:'1ZluH9xw20_MoCtch428PVuNuwyJHJt_cTmqd9OvNzGw',since:0,pending:{},last:0,state:'idle',err:'',linked:false};
+/* Alamat Web App Apps Script (https://script.google.com/macros/s/.../exec). Isi di sini agar teknisi tidak perlu mengetik.
+   Boleh dikosongkan: bisa juga diisi dari layar login atau lewat tautan undangan (Atur > Pengguna). */
+var DEFAULT_URL='';
+var SYNC={url:'',since:0,pending:{},last:0,state:'idle',err:'',linked:false};
+var AUTH=null,loginD={url:'',user:'',pass:'',busy:false,err:'',show:false,editUrl:false},logoutArmed=false;
+var USR={list:null,busy:false,err:'',form:null,armedDel:''};
+function isAdmin(){return !!AUTH&&AUTH.role==='admin';}
+function isTech(){return !!AUTH&&AUTH.role==='teknisi';}
+function hasServer(){return !!AUTH&&!AUTH.local&&!!SYNC.url&&!!AUTH.session;}
+function ns(){return isTech()?'-'+AUTH.user:'';}
 var BT={dev:null,ch:null,name:''},syncing=false,installEv=null,syncTimer=null;
 var tab='kasir',aturTab='toko',month=iso(new Date()).slice(0,7),day=iso(new Date()),dayAuto=true;
 var draft=newDraft(),expDraft=newExp(),lastSaved=null,openTx=null,armed=null,showImg=null;
@@ -239,10 +248,10 @@ function applyTheme(){
  var r=document.documentElement;r.setAttribute('data-tema',id);r.setAttribute('data-fs',PREFS.fs);
  var th=THEMES.find(function(x){return x[0]===id;}),m=document.querySelector('meta[name=theme-color]');if(m&&th)m.setAttribute('content',th[2]);}
 
-function idbOpen(){return new Promise(function(res,rej){var r=indexedDB.open('kasir-pro',1);r.onupgradeneeded=function(){r.result.createObjectStore('docs',{keyPath:'k'});};r.onsuccess=function(){res(r.result);};r.onerror=function(){rej(r.error);};});}
+function idbOpen(){return new Promise(function(res,rej){var r=indexedDB.open('kasir-pro'+ns(),1);r.onupgradeneeded=function(){r.result.createObjectStore('docs',{keyPath:'k'});};r.onsuccess=function(){res(r.result);};r.onerror=function(){rej(r.error);};});}
 function idbAll(){return new Promise(function(res,rej){var q=IDB.transaction('docs','readonly').objectStore('docs').getAll();q.onsuccess=function(){res(q.result);};q.onerror=function(){rej(q.error);};});}
 function idbPut(k,v){try{IDB.transaction('docs','readwrite').objectStore('docs').put({k:k,v:v});}catch(e){}}
-function persist(k){if(IDB)idbPut(k,DOCS[k]);else try{localStorage.setItem('kp-fallback',JSON.stringify(DOCS));}catch(e){}}
+function persist(k){if(IDB)idbPut(k,DOCS[k]);else try{localStorage.setItem('kp-fallback'+ns(),JSON.stringify(DOCS));}catch(e){}}
 function rebuild(){
  txs=[];exps=[];kass=[];var c=null;
  Object.keys(DOCS).forEach(function(k){var o=DOCS[k];if(!o||o.deleted)return;if(k.indexOf('tx/')===0)txs.push(o);else if(k.indexOf('exp/')===0)exps.push(o);else if(k.indexOf('kas/')===0)kass.push(o);else if(k==='cfg/main')c=o;});
@@ -252,15 +261,27 @@ function rebuild(){
   if(s.role==='admin'){s.share=0;s.fee=0;s.base=+s.base||0;}
   else{s.base=0;if(s.share==null||isNaN(+s.share))s.share=s.role==='expert'?40:30;if(s.fee==null||isNaN(+s.fee))s.fee=2;}
  });}
-function put(coll,o){o.updated=Date.now();var k=coll+'/'+o.id;DOCS[k]=o;persist(k);mark(k);rebuild();}
-function drop(coll,id){var k=coll+'/'+id,o=DOCS[k];if(!o)return;o.deleted=true;o.updated=Date.now();persist(k);mark(k);rebuild();}
-function saveCfg(){cfg.id='main';cfg.updated=Date.now();DOCS['cfg/main']=cfg;persist('cfg/main');mark('cfg/main');}
+/* Hanya Admin yang boleh mengubah data. Akun Teknisi hanya melihat (server juga menolak tulis dari teknisi). */
+function put(coll,o){if(!isAdmin())return;o.updated=Date.now();var k=coll+'/'+o.id;DOCS[k]=o;persist(k);mark(k);rebuild();pubPool();}
+function drop(coll,id){if(!isAdmin())return;var k=coll+'/'+id,o=DOCS[k];if(!o)return;o.deleted=true;o.updated=Date.now();persist(k);mark(k);rebuild();pubPool();}
+var ppBusy=false;
+function saveCfg(){if(!isAdmin())return;cfg.id='main';cfg.updated=Date.now();DOCS['cfg/main']=cfg;persist('cfg/main');mark('cfg/main');if(!ppBusy)pubPool();}
+/* Nilai bonus rajin per bulan dihitung di perangkat Admin lalu ikut tersimpan di pengaturan,
+   supaya Teknisi bisa melihat nominal bonusnya tanpa perlu membaca data seluruh toko. */
+function pubPool(){
+ if(!isAdmin())return;
+ var ms={},np=Object.assign({},cfg.rajinPool||{}),ch=false;
+ txs.forEach(function(t){if(t.date)ms[t.date.slice(0,7)]=1;if(t.doneDate)ms[t.doneDate.slice(0,7)]=1;});
+ Object.keys(cfg.rajinCheck||{}).forEach(function(k){ms[k.split('|')[0]]=1;});
+ Object.keys(ms).forEach(function(m){var v=Math.round(monthStats(m).rajinPool);if(np[m]!==v){np[m]=v;ch=true;}});
+ if(ch){cfg.rajinPool=np;ppBusy=true;try{saveCfg();}finally{ppBusy=false;}}}
 function findTx(id){return txs.find(function(x){return x.id===id;});}
 
-function loadSync(){try{SYNC=Object.assign(SYNC,JSON.parse(localStorage.getItem('kp-sync')||'{}'));}catch(e){}SYNC.state='idle';}
-function saveSync(){try{localStorage.setItem('kp-sync',JSON.stringify({url:SYNC.url,token:SYNC.token,since:SYNC.since,pending:SYNC.pending,last:SYNC.last,linked:SYNC.linked}));}catch(e){}}
-function mark(k){SYNC.pending[k]=1;saveSync();scheduleSync(3000);}
-function scheduleSync(ms){if(!SYNC.url||!SYNC.token)return;clearTimeout(syncTimer);syncTimer=setTimeout(function(){syncNow(false);},ms);}
+function syncKey(){return'kp-sync'+ns();}
+function loadSync(){try{var o=JSON.parse(localStorage.getItem(syncKey())||'{}');delete o.token;SYNC=Object.assign(SYNC,o);}catch(e){}SYNC.state='idle';if(!SYNC.url&&DEFAULT_URL)SYNC.url=DEFAULT_URL;}
+function saveSync(){try{localStorage.setItem(syncKey(),JSON.stringify({url:SYNC.url,since:SYNC.since,pending:SYNC.pending,last:SYNC.last,linked:SYNC.linked}));}catch(e){}}
+function mark(k){if(!isAdmin())return;SYNC.pending[k]=1;saveSync();scheduleSync(3000);}
+function scheduleSync(ms){if(!hasServer())return;clearTimeout(syncTimer);syncTimer=setTimeout(function(){syncNow(false);},ms);}
 function cell(v){var s=v==null?'':String(v);if(/^[=+\-@]/.test(s)||/^0\d/.test(s)||/^\d{9,}$/.test(s))return"'"+s;return s;}
 function rowFor(k,o){
  var coll=k.split('/')[0],base=[o.id,o.updated,o.deleted?1:0];
@@ -271,13 +292,15 @@ function rowFor(k,o){
  if(coll==='kas'){var sk=staff(o.staffId);return base.concat([o.date,sk?sk.name:o.staffId,o.kind==='potong'?'Potong gaji':'Kasbon',+o.amount||0,cell(o.note),js]);}
  if(coll==='exp')return base.concat([o.date,cell(o.cat),cell(o.note),+o.amount||0,js]);
  return base.concat(['Pengaturan toko',js]);}
-function api(body){
- body.token=SYNC.token;var ctl=new AbortController(),tm=setTimeout(function(){ctl.abort();},45000);
- return fetch(SYNC.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body),redirect:'follow',signal:ctl.signal})
+function post(url,body){
+ var ctl=new AbortController(),tm=setTimeout(function(){ctl.abort();},45000);
+ return fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body),redirect:'follow',signal:ctl.signal})
   .then(function(r){clearTimeout(tm);return r.json();}).catch(function(e){clearTimeout(tm);throw e;});}
+function api(body){body.session=AUTH&&AUTH.session||'';return post(SYNC.url,body);}
 function pendingCount(){return Object.keys(SYNC.pending).length;}
+function errMsg(c){return({login:'Username atau sandi salah.',locked:'Terlalu banyak percobaan salah. Coba lagi 10 menit lagi.',setup:'Sandi admin awal belum diisi di Code.gs (ADMIN_PASSWORD_AWAL).',token:'Skrip Google di server masih versi lama. Tempel Code.gs terbaru lalu Deploy versi baru.',action:'Skrip Google di server belum versi terbaru. Tempel Code.gs terbaru lalu Deploy versi baru.',forbidden:'Akun ini tidak punya izin untuk tindakan tersebut.',auth:'Sesi berakhir. Silakan masuk lagi.',username:'Username 3–20 karakter: huruf kecil, angka, titik, strip.',staff:'Pilih karyawan untuk akun teknisi.',pendek:'Sandi minimal 6 karakter.',self:'Tidak bisa mengubah peran/menonaktifkan akun Anda sendiri.',lastadmin:'Harus tersisa minimal satu admin aktif.',notfound:'Akun tidak ditemukan.',format:'Permintaan tidak dikenali.'})[c]||('Kendala: '+c);}
 function syncLabel(){
- if(!SYNC.url||!SYNC.token)return{c:'',t:'Belum terhubung ke Google Sheets'};
+ if(!hasServer())return{c:'',t:AUTH&&AUTH.local?'Mode lokal · belum terhubung ke Google Sheets':'Belum terhubung ke Google Sheets'};
  var n=pendingCount();
  if(SYNC.state==='busy')return{c:'wait',t:'Menyinkronkan…'};
  if(SYNC.state==='error')return{c:'err',t:'Gagal sinkron · '+n+' menunggu · ketuk untuk detail'};
@@ -286,12 +309,13 @@ function syncLabel(){
  return{c:'ok',t:'Tersinkron ke Google Sheets'+(SYNC.last?' · '+new Date(SYNC.last).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}):'')};}
 function statusRefresh(){var b=document.querySelector('.sub');if(!b)return;var sl=syncLabel();b.className='sub '+sl.c;b.innerHTML='<span class="dot"></span>'+esc(sl.t);}
 async function syncNow(manual){
- if(!SYNC.url||!SYNC.token){if(manual)toast('Isi tautan Apps Script dan kode rahasia di Atur › Google Sheets.');return;}
+ if(!hasServer()){if(manual)toast(isAdmin()?'Hubungkan dulu di Atur › Google Sheets, lalu masuk dengan akun admin.':'Belum terhubung ke server.');return;}
  if(syncing)return;
  if(typeof navigator.onLine==='boolean'&&!navigator.onLine){SYNC.state='offline';statusRefresh();if(manual)toast('Perangkat offline. Data disinkronkan saat tersambung.');return;}
  syncing=true;SYNC.state='busy';statusRefresh();var changed=false;
  try{
   var by={tx:[],exp:[],cfg:[],kas:[]};
+  if(!isAdmin())SYNC.pending={};
   Object.keys(SYNC.pending).forEach(function(k){if(!DOCS[k]){delete SYNC.pending[k];return;}var c=k.split('/')[0];if(by[c])by[c].push(k);});
   for(var coll in by){var ks=by[coll];
    for(var i=0;i<ks.length;i+=40){var part=ks.slice(i,i+40),snap={};
@@ -300,7 +324,8 @@ async function syncNow(manual){
     if(!r||!r.ok)throw new Error((r&&r.error)||'push');
     part.forEach(function(k){if(DOCS[k]&&DOCS[k].updated===snap[k])delete SYNC.pending[k];});
     saveSync();}}
-  var pr=await api({action:'pull',since:SYNC.since});
+  /* since mundur 10 menit: jaga-jaga jam antar-perangkat tidak persis sama (data yang sama dilewati otomatis). */
+  var pr=await api({action:'pull',since:Math.max(0,SYNC.since-600000)});
   if(!pr||!pr.ok)throw new Error((pr&&pr.error)||'pull');
   var maxU=SYNC.since;
   (pr.docs||[]).forEach(function(d){
@@ -313,10 +338,11 @@ async function syncNow(manual){
   if(manual)toast('Sinkronisasi selesai.');
  }catch(e){
   SYNC.state='error';SYNC.err=(e&&e.message)||'gagal';
-  if(manual)toast(SYNC.err==='token'?'Kode rahasia tidak cocok dengan skrip.':'Sinkronisasi gagal. Periksa koneksi internet.');
+  if(SYNC.err==='auth'){SYNC.state='idle';syncing=false;toast('Sesi berakhir. Silakan masuk lagi.');sessionExpired();return;}
+  if(manual)toast(/^(token|action|forbidden)$/.test(SYNC.err)?errMsg(SYNC.err):'Sinkronisasi gagal. Periksa koneksi internet.');
  }
  syncing=false;statusRefresh();
- if((changed||tab==='atur')&&!typing())render();}
+ if((changed||tab==='atur')&&!typing()&&!sigPad.drawing)render();}
 
 /* RUMUS FINAL:
  Laba bersih = total nota - modal sparepart
@@ -527,19 +553,40 @@ function waOwner(t,cl){
 
 function refundBanner(){var L=refundDue();if(!L.length)return'';
  return'<section class="card stack" style="border-color:var(--bad)"><strong>⚠ '+L.length+' refund garansi menunggu dikembalikan ke pelanggan</strong>'+L.map(function(x){return'<span class="small">'+esc(x.t.no)+' · '+esc(x.t.customer||'-')+' · '+esc(x.t.device)+' · '+rp(calc(x.t).total)+'</span>';}).join('')+'<span class="small muted">Buka nota di tab Nota, lalu tekan "Tandai uang sudah dikembalikan" setelah uang diserahkan.</span></section>';}
-function view(){var f={kasir:vKasir,riwayat:vNota,gaji:vGaji,biaya:vBiaya,laporan:vLaporan,atur:vAtur}[tab]||vKasir;
- try{return((tab==='kasir'||tab==='riwayat')?refundBanner():'')+f();}catch(e){return'<section class="card stack"><strong>Halaman gagal dimuat</strong><span class="small muted">'+esc(e&&e.message)+'</span><div><button class="btn sm" data-act="tab" data-v="kasir">Kembali ke Input Data</button></div></section>';}}
+var ADMIN_TABS=['kasir','riwayat','gaji','biaya','laporan','atur'],TECH_TABS=['t-ringkas','t-kerja','t-kasbon'];
+function view(){
+ var f={kasir:vKasir,riwayat:vNota,gaji:vGaji,biaya:vBiaya,laporan:vLaporan,atur:vAtur,'t-ringkas':vTekRingkas,'t-kerja':vTekKerja,'t-kasbon':vTekKasbon}[tab];
+ /* Pengaman: teknisi tidak pernah bisa membuka halaman admin, walau variabel tab diubah dari luar. */
+ if(isTech()&&TECH_TABS.indexOf(tab)<0){tab='t-ringkas';f=vTekRingkas;}
+ if(isAdmin()&&ADMIN_TABS.indexOf(tab)<0){tab='kasir';f=vKasir;}
+ try{return((tab==='kasir'||tab==='riwayat')?refundBanner():'')+f();}catch(e){return'<section class="card stack"><strong>Halaman gagal dimuat</strong><span class="small muted">'+esc(e&&e.message)+'</span><div><button class="btn sm" data-act="tab" data-v="'+(isTech()?'t-ringkas':'kasir')+'">Kembali</button></div></section>';}}
+function whoBar(){
+ if(AUTH.local)return'<span class="small muted">Mode lokal</span>';
+ return'<span class="row" style="gap:6px;flex-wrap:nowrap"><span class="small muted" style="text-align:right;line-height:1.2">'+esc(AUTH.name||AUTH.user)+(String(AUTH.name||'').toLowerCase()===(isTech()?'teknisi':'admin')?'':'<br>'+(isTech()?'Teknisi':'Admin'))+'</span><button class="btn sm'+(logoutArmed?' armed':'')+'" data-act="logout">'+(logoutArmed?'Yakin keluar?':'Keluar')+'</button></span>';}
 function shell(){
- var tabs=[['kasir','Input Data'],['riwayat','Nota'],['gaji','Gaji'],['biaya','Biaya'],['laporan','Laporan'],['atur','Atur']];
- var showMon=['gaji','biaya','laporan'].indexOf(tab)>=0||(tab==='riwayat'&&(flt==='bulan'||flt==='batal')),sl=syncLabel();
- return'<div class="wrap"><header class="top"><div><h1>'+esc(cfg.shop)+'</h1><button class="sub '+sl.c+'" data-act="go-sheets"><span class="dot"></span>'+esc(sl.t)+'</button></div>'+
-  (showMon?'<div class="mon"><button data-act="mon" data-v="-1" aria-label="Bulan sebelumnya">‹</button><strong>'+mlabel(month)+'</strong><button data-act="mon" data-v="1" aria-label="Bulan berikutnya">›</button></div>':'')+
+ var tabs=isTech()?[['t-ringkas','Ringkasan'],['t-kerja','Pekerjaan'],['t-kasbon','Kasbon']]:[['kasir','Input Data'],['riwayat','Nota'],['gaji','Gaji'],['biaya','Biaya'],['laporan','Laporan'],['atur','Atur']];
+ var showMon=['gaji','biaya','laporan','t-ringkas','t-kerja','t-kasbon'].indexOf(tab)>=0||(tab==='riwayat'&&(flt==='bulan'||flt==='batal')),sl=syncLabel();
+ return'<div class="wrap"><header class="top"><div><h1>'+esc(cfg.shop)+'</h1><button class="sub '+sl.c+'" data-act="'+(isTech()?'sy-now':'go-sheets')+'"><span class="dot"></span>'+esc(sl.t)+'</button></div>'+whoBar()+
+  (showMon?'<div class="mon" style="flex-basis:100%;justify-content:center"><button data-act="mon" data-v="-1" aria-label="Bulan sebelumnya">‹</button><strong>'+mlabel(month)+'</strong><button data-act="mon" data-v="1" aria-label="Bulan berikutnya">›</button></div>':'')+
   '</header><main>'+view()+'</main></div><nav class="tabs"><div class="wrap tabs-in">'+
   tabs.map(function(t){return'<button class="tab" data-act="tab" data-v="'+t[0]+'"'+(tab===t[0]?' aria-current="page"':'')+'>'+t[1]+'</button>';}).join('')+'</div></nav>';}
+function loginHTML(){
+ var hasUrl=!loginD.editUrl&&!!SYNC.url;
+ return'<div class="wrap" style="min-height:100vh;display:grid;align-content:center;gap:16px;padding:24px 0"><div style="text-align:center"><h1>'+esc(cfg.shop||'ADOB CELL')+'</h1><span class="muted small">Kasir Servis Pro · silakan masuk</span></div>'+
+ '<form class="card stack" onsubmit="return false">'+
+ (hasUrl?'':'<label class="f">Alamat server (sekali saja)<input id="lg-url" data-lg="url" value="'+esc(loginD.url)+'" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" inputmode="url"></label>')+
+ '<label class="f">Username<input id="lg-user" data-lg="user" value="'+esc(loginD.user)+'" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="cth. admin / teknisi1"></label>'+
+ '<label class="f">Sandi<input id="lg-pass" data-lg="pass" type="'+(loginD.show?'text':'password')+'" value="'+esc(loginD.pass)+'" autocomplete="current-password"></label>'+
+ '<label class="row small" style="cursor:pointer"><input type="checkbox" data-lg-show="1"'+(loginD.show?' checked':'')+'> Tampilkan sandi</label>'+
+ (loginD.err?'<div class="badge bad" role="alert" style="white-space:normal">'+esc(loginD.err)+'</div>':'')+
+ '<button type="button" class="btn pri" style="padding:.8rem" data-act="login"'+(loginD.busy?' disabled':'')+'>'+(loginD.busy?'Memeriksa…':'Masuk')+'</button>'+
+ (hasUrl?'<div class="small muted" style="text-align:center">Server: tersimpan di perangkat ini. <button type="button" class="linkbtn" data-act="login-url">Ganti</button></div>':'')+
+ '</form>'+
+ (SYNC.url?'':'<div class="card stack"><span class="small muted">Belum memakai Google Sheets? Anda bisa memakai aplikasi ini sendiri di perangkat ini tanpa server (data hanya tersimpan di perangkat ini).</span><div><button class="btn sm" data-act="login-local">Pakai mode lokal (tanpa server)</button></div></div>')+'</div>';}
 function render(){
  var ae=document.activeElement,id=ae&&ae.id,ss=null,se=null,y=window.scrollY;
  try{ss=ae.selectionStart;se=ae.selectionEnd;}catch(e){}
- document.getElementById('app').innerHTML=shell();
+ document.getElementById('app').innerHTML=AUTH?shell():loginHTML();
  if(id){var el=document.getElementById(id);if(el){el.focus({preventScroll:true});try{if(ss!=null)el.setSelectionRange(ss,se);}catch(e){}}}
  window.scrollTo(0,y);initSigPad();}
 var tt;function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(function(){t.classList.remove('on');},3800);}
@@ -678,7 +725,7 @@ function detail(t){
   (t.lockType&&t.lockType!=='none'?ln2('Kunci layar <span class="muted small">(internal)</span>',esc(lockInternal(t))):'')+
   (t.phone?ln2('No. HP','<span class="num">'+esc(t.phone)+'</span>'):'')+
   ln2('Tanggal masuk',fdate(t.date))+(t.doneDate?ln2('Tanggal selesai',fdate(t.doneDate)):'')+(t.pickDate?ln2('Tanggal diambil',fdate(t.pickDate)):'')+(t.cancelAt?ln2('Tanggal batal',fdate(t.cancelAt)):'')+
-  (t.signature?ln2('Tanda tangan','<img src="'+t.signature+'" class="sigimg" alt="TTD">'):'')+'</div>';
+  (t.signature&&/^data:image\//.test(t.signature)?ln2('Tanda tangan','<img src="'+esc(t.signature)+'" class="sigimg" alt="TTD">'):'')+'</div>';
  if(editD.id===id)h+='<div class="box"><h3>Edit biaya &amp; item</h3>'+editPanel(t)+'</div>';
  else{
   h+='<div class="ledger">'+(t.items||[]).map(function(i){var q=+i.qty||1;return'<div class="ln"><span>'+esc(i.name)+' <span class="muted small">'+q+' × '+nm(i.price)+(i.type==='part'?' · modal '+nm(i.cost):'')+'</span></span><span class="num">'+rp(q*(+i.price||0))+'</span></div>';}).join('')+'</div>'+
@@ -758,6 +805,64 @@ function vGaji(){
   '<div style="margin-top:12px"><button class="btn sm" data-act="paid" data-v="'+s.id+'">'+(paid?'Batalkan tanda dibayar':'Tandai sudah dibayar')+'</button></div></section>';});
  h+=kasHTML();
  h+='<section class="card"><div class="ledger"><div class="ln"><span>Total gaji admin + bagi hasil + bonus</span><span class="num">'+rp(st.payroll)+'</span></div><div class="ln tot"><span>Sisa bersih toko</span><span class="num '+(st.netShop<0?'neg':'pos')+'">'+rp(st.netShop)+'</span></div></div><p class="muted small" style="margin:8px 0 0">Sisa bersih = sisa toko − gaji admin − bonus admin − bonus rajin − pengeluaran − klaim garansi disetujui.</p></section>';
+ return h;}
+
+/* ===== Tampilan khusus akun Teknisi (hanya lihat, tidak ada tombol ubah) ===== */
+function techLedger(c){
+ return'<div class="ledger"><div class="ln"><span>Total nota</span><span class="num">'+rp(c.total)+'</span></div>'+
+ '<div class="ln"><span>Modal sparepart</span><span class="num">− '+rp(c.partCost)+'</span></div>'+
+ '<div class="ln tot"><span>Laba bersih</span><span class="num">'+rp(c.net)+'</span></div>'+
+ '<div class="ln"><span>Bagi hasil ('+pct(c.share)+' laba bersih)</span><span class="num">'+rp(c.bh)+'</span></div>'+
+ '<div class="ln"><span>Fee unit ('+pct(c.fee)+')</span><span class="num">'+rp(c.feeAmt)+'</span></div>'+
+ '<div class="ln tot"><span>Hasil Anda</span><span class="num pos">'+rp(c.tech)+'</span></div></div>';}
+function vTekRingkas(){
+ var sid=AUTH.staffId,s=staff(sid)||{name:AUTH.name,share:0,fee:0},st=monthStats(month);
+ var b=st.byTech[sid]||{masuk:0,proses:0,selesai:0,batal:0,net:0,bh:0,feeAmt:0,tech:0};
+ var k=month+'|'+sid,on=!!(cfg.rajinCheck&&cfg.rajinCheck[k]),pool=+(cfg.rajinPool&&cfg.rajinPool[month])||0,rajin=on?pool:0;
+ var paid=cfg.paid&&cfg.paid[k],tot=b.tech+rajin,pot=kasMonth(sid,month),bal=kasBal(sid);
+ var h='<section class="card"><h3>Diterima bulan '+mlabel(month)+'</h3><div class="big num '+((tot-pot)<0?'neg':'pos')+'" style="margin-top:6px">'+rp(tot-pot)+'</div>'+
+  '<span class="muted small">'+(pot?'Sudah dipotong kasbon '+rp(pot)+' · ':'')+b.selesai+' unit selesai</span>'+
+  '<div style="margin-top:8px"><span class="badge '+(paid?'good':'warn')+'">'+(paid?'Sudah dibayar '+fdate(paid):'Belum dibayar')+'</span></div></section>';
+ h+='<section class="card stack"><h2>Pekerjaan saya</h2><div class="stats">'+stat('Masuk',b.masuk,'')+stat('Masih proses',b.proses,'warn')+stat('Selesai',b.selesai,'good')+stat('Batal',b.batal,'bad')+'</div>'+
+  '<span class="small muted">Masuk &amp; proses dihitung dari tanggal masuk; selesai dari tanggal selesai.</span></section>';
+ h+='<section class="card"><h2>Rincian penghasilan</h2><div class="ledger" style="margin-top:8px">'+
+  '<div class="ln"><span>Laba bersih unit selesai</span><span class="num">'+rp(b.net)+'</span></div>'+
+  '<div class="ln"><span>Bagi hasil ('+pct(s.share)+')</span><span class="num">'+rp(b.bh)+'</span></div>'+
+  '<div class="ln"><span>Fee unit / bonus per unit ('+pct(s.fee)+')</span><span class="num">'+rp(b.feeAmt)+'</span></div>'+
+  '<div class="ln tot"><span>Subtotal dari pekerjaan</span><span class="num">'+rp(b.tech)+'</span></div>'+
+  '<div class="ln"><span>Bonus rajin'+(on?'':' <span class="muted small">(belum didapat)</span>')+'</span><span class="num '+(on?'pos':'muted')+'">'+(on?'+ '+rp(rajin):'Rp 0')+'</span></div>'+
+  '<div class="ln tot"><span>Total penghasilan</span><span class="num">'+rp(tot)+'</span></div>'+
+  '<div class="ln"><span>Potongan kasbon bulan ini</span><span class="num">'+(pot?'− ':'')+rp(pot)+'</span></div>'+
+  '<div class="ln tot"><span>Diterima bersih</span><span class="num pos">'+rp(tot-pot)+'</span></div></div>'+
+  (b.refund?'<p class="small muted" style="margin:8px 0 0">Termasuk pengurangan '+b.refund+' unit refund garansi bulan ini.</p>':'')+
+  '<p class="small muted" style="margin:8px 0 0">Bonus rajin ('+pct(cfg.rajinRate==null?2:cfg.rajinRate)+' sisa toko) dicentang pemilik di akhir bulan bila syarat terpenuhi: full hadir, maks 2 telat, zero rework, nota rapi.</p></section>';
+ h+='<section class="card row sb"><div><h3>Sisa kasbon</h3><div class="num" style="font-size:1.4rem;font-weight:700;margin-top:4px">'+rp(bal)+'</div></div><span class="badge '+(bal>0?'warn':'good')+'">'+(bal>0?'Belum lunas':'Lunas')+'</span></section>';
+ return h;}
+function tekRows(){var sid=AUTH.staffId;
+ return txs.filter(function(t){return t.techId===sid&&(inM(t.date,month)||(isActive(t)&&isFin(t)&&inM(finDate(t),month))||(!isActive(t)&&inM(cancelDate(t),month)));})
+  .sort(function(a,b){return(b.ts||'').localeCompare(a.ts||'');});}
+function tekDetail(t){
+ var c=calc(t),h='<div class="ledger">'+(t.device?ln2('Perangkat',esc(t.device)):'')+(t.complaint?ln2('Keluhan',esc(t.complaint)):'')+
+  ln2('Tanggal masuk',fdate(t.date))+(t.doneDate?ln2('Tanggal selesai',fdate(t.doneDate)):'')+(t.pickDate?ln2('Tanggal diambil',fdate(t.pickDate)):'')+(t.cancelAt?ln2('Tanggal batal',fdate(t.cancelAt)):'')+'</div>'+
+  '<div class="ledger">'+(t.items||[]).map(function(i){var q=+i.qty||1;return'<div class="ln"><span>'+esc(i.name)+' <span class="muted small">'+q+' × '+nm(i.price)+'</span></span><span class="num">'+rp(q*(+i.price||0))+'</span></div>';}).join('')+'</div>';
+ if(!isActive(t))return h+'<div class="box"><strong class="neg">Nota dibatalkan</strong>'+(t.cancelReason?'<span class="small">Alasan: '+esc(t.cancelReason)+'</span>':'')+'<span class="muted small">Tidak masuk hitungan hasil.</span></div>';
+ return h+techLedger(c)+(isFin(t)?'':'<span class="small muted">Hasil di atas perkiraan; masuk hitungan bulan saat status Selesai.</span>');}
+function vTekKerja(){
+ var L=tekRows(),h='';
+ if(!L.length)return emptyBlock('Belum ada pekerjaan di '+mlabel(month),'Nota yang diberikan kepada Anda akan muncul di sini.');
+ var tot=0;L.forEach(function(t){if(isActive(t)&&isFin(t)&&inM(finDate(t),month))tot+=calc(t).tech;});
+ h+='<section class="card"><div class="row sb" style="margin-bottom:10px"><h2>'+L.length+' nota</h2><span class="num small">Hasil selesai: <b class="pos">'+rp(tot)+'</b></span></div>'+
+ L.map(function(t){var c=calc(t),o2=openTx===t.id,done=isActive(t)&&isFin(t);
+  return'<div class="tx'+(isActive(t)?'':' cancelled')+'"><button class="tx-h" data-act="tek-toggle" data-v="'+esc(t.id)+'" aria-expanded="'+o2+'"><span class="tx-title"><strong class="num">'+esc(t.no)+'</strong> <span class="muted small">'+fdate(t.date)+'</span><br>'+esc(t.device||'Perangkat')+(t.customer?' <span class="muted">· '+esc(t.customer)+'</span>':'')+(t.complaint?'<br><span class="muted small">'+esc(t.complaint)+'</span>':'')+'</span><span class="num"><strong class="'+(done?'pos':'muted')+'">'+(done?rp(c.tech):'—')+'</strong><br><span class="muted small">'+(done?'hasil Anda':'belum selesai')+'</span></span></button><div class="row">'+statusBadge(t)+refBadge(t)+'</div>'+(o2?tekDetail(t):'')+'</div>';}).join('')+'</section>';
+ return h;}
+function vTekKasbon(){
+ var sid=AUTH.staffId,L=kass.filter(function(k){return k.staffId===sid;}).sort(function(a,b){return String(b.date).localeCompare(String(a.date))||((b.updated||0)-(a.updated||0));});
+ var bal=kasBal(sid),tk=0,tp=0;L.forEach(function(k){if(k.kind==='potong')tp+=+k.amount||0;else tk+=+k.amount||0;});
+ var h='<section class="card"><h3>Sisa kasbon</h3><div class="big num '+(bal>0?'neg':'pos')+'" style="margin-top:6px">'+rp(bal)+'</div><span class="badge '+(bal>0?'warn':'good')+'">'+(bal>0?'Belum lunas':'Lunas')+'</span>'+
+  '<div class="ledger" style="margin-top:10px"><div class="ln"><span>Total kasbon diambil</span><span class="num">'+rp(tk)+'</span></div><div class="ln"><span>Total sudah dipotong dari gaji</span><span class="num">'+rp(tp)+'</span></div><div class="ln"><span>Potongan bulan '+mlabel(month)+'</span><span class="num">'+rp(kasMonth(sid,month))+'</span></div></div></section>';
+ if(!L.length)return h+emptyBlock('Belum ada catatan kasbon','Anda tidak punya kasbon.');
+ h+='<section class="card"><h2>Riwayat kasbon</h2>'+L.map(function(k){var pot=k.kind==='potong';
+  return'<div class="tx"><div class="row sb" style="flex-wrap:nowrap;align-items:flex-start"><span style="min-width:0"><strong>'+(pot?'Potong gaji':'Kasbon')+'</strong> <span class="muted small">'+fdate(k.date)+'</span>'+(k.note?'<br><span class="muted small">'+esc(k.note)+'</span>':'')+'</span><span class="num '+(pot?'pos':'neg')+'">'+(pot?'− ':'+ ')+rp(k.amount)+'</span></div></div>';}).join('')+'</section>';
  return h;}
 
 function kasHTML(){
@@ -875,10 +980,11 @@ function aturBody(){
   var sl=syncLabel();
   h+='<section class="card stack"><h2>Google Sheets</h2><p class="small muted" style="margin:0">Data nota, pengeluaran, dan pengaturan otomatis dikirim ke Google Sheet Anda.</p>'+
   '<label class="f">Tautan Web App (Apps Script)<input id="sy-url" data-sy="url" value="'+esc(SYNC.url)+'" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" inputmode="url"></label>'+
-  '<label class="f">Kode rahasia<input id="sy-token" data-sy="token" type="password" value="'+esc(SYNC.token)+'" autocomplete="off"></label>'+
+  '<p class="small muted" style="margin:0">Akses dikunci dengan login. Akun dibuat di tab <b>Pengguna</b>; sandi admin awal diatur di <b>Code.gs</b> (ADMIN_PASSWORD_AWAL).</p>'+
   '<div class="box"><div class="row sb"><strong>Status</strong><span class="badge '+(sl.c==='ok'?'good':sl.c==='err'?'bad':'mute')+'">'+esc(sl.t)+'</span></div><span class="small muted">'+pendingCount()+' data menunggu'+(SYNC.err?' · kendala: '+esc(SYNC.err):'')+'</span></div>'+
   '<div class="row"><button class="btn pri" data-act="sy-test">Hubungkan &amp; uji</button><button class="btn" data-act="sy-now">Sinkronkan sekarang</button></div>'+
-  '<div class="row"><button class="btn sm" data-act="sy-pull">Ambil ulang semua dari Sheet</button><button class="btn sm danger" data-act="sy-off">Putuskan</button></div></section>';}
+  '<div class="row"><button class="btn sm" data-act="sy-pull"'+(hasServer()?'':' disabled')+'>Ambil ulang semua dari Sheet</button><button class="btn sm danger" data-act="sy-off">Putuskan</button></div></section>';}
+ if(aturTab==='pengguna')h+=penggunaBody();
  if(aturTab==='data'){
   h+='<section class="card stack"><h2>Cadangan &amp; ekspor</h2><div class="row"><button class="btn" data-act="exp-tx">Unduh nota bulan ini (CSV)</button><button class="btn" data-act="exp-exp">Unduh pengeluaran (CSV)</button></div>'+
   '<div class="row"><button class="btn" data-act="backup">Unduh cadangan (.json)</button><label class="btn" for="restore-file" style="cursor:pointer">Pulihkan dari cadangan</label><input id="restore-file" type="file" accept=".json,application/json" hidden></div>'+
@@ -887,8 +993,93 @@ function aturBody(){
  if(aturTab==='sop')h+='<section class="card stack"><h2>SOP &amp; tata tertib '+esc(cfg.shop)+'</h2><span class="badge '+(PREFS.sopSetujui?'good':'warn')+'">'+(PREFS.sopSetujui?'SOP sudah disetujui di perangkat ini':'Belum menyetujui SOP')+'</span>'+sopContent()+'</section>';
  return h;}
 function vAtur(){
- var tabs=[['toko','Toko & tarif'],['tampilan','Tampilan'],['printer','Printer'],['sheets','Google Sheets'],['data','Data'],['sop','SOP']];
+ var tabs=[['toko','Toko & tarif'],['pengguna','Pengguna'],['tampilan','Tampilan'],['printer','Printer'],['sheets','Google Sheets'],['data','Data'],['sop','SOP']];
  return'<section class="card"><div class="chips">'+tabs.map(function(t){return'<button class="chip" data-act="atur" data-v="'+t[0]+'" aria-pressed="'+(aturTab===t[0])+'">'+esc(t[1])+'</button>';}).join('')+'</div><p class="muted small" style="margin:8px 0 0">Semua isian di menu Atur tersimpan otomatis begitu diubah.</p></section>'+aturBody();}
+
+/* ===== Login, keluar, dan kelola pengguna ===== */
+function saveAuth(){try{localStorage.setItem('kp-auth',JSON.stringify(AUTH));}catch(e){}}
+function loadAuth(){try{var a=JSON.parse(localStorage.getItem('kp-auth')||'null');if(a&&(a.local||(a.session&&(a.role==='admin'||a.role==='teknisi'))))AUTH=a;}catch(e){}}
+function sessionExpired(){var u=AUTH&&AUTH.user;try{localStorage.removeItem('kp-auth');}catch(e){}AUTH=null;loginD.user=u&&u!=='lokal'?u:'';loginD.pass='';loginD.err='Sesi berakhir. Silakan masuk lagi.';render();}
+async function doLogin(){
+ if(loginD.busy)return;
+ var url=(loginD.editUrl||!SYNC.url?loginD.url:SYNC.url).trim(),u=String(loginD.user||'').trim().toLowerCase(),p=loginD.pass||'';
+ if(!/^https:\/\/script\.google\.com\//.test(url)){loginD.err='Alamat server harus diawali https://script.google.com/';render();return;}
+ if(!u||!p){loginD.err='Isi username dan sandi.';render();return;}
+ loginD.busy=true;loginD.err='';render();
+ try{
+  var r=await post(url,{action:'login',user:u,pass:p});
+  if(!r||!r.ok){loginD.busy=false;loginD.err=errMsg(r&&r.error);loginD.pass='';render();return;}
+  var key='kp-sync'+(r.role==='teknisi'?'-'+r.user:''),o={};
+  try{o=JSON.parse(localStorage.getItem(key)||'{}');}catch(e){}
+  o.url=url;delete o.token;localStorage.setItem(key,JSON.stringify(o));
+  if(r.role==='teknisi'){try{var o2=JSON.parse(localStorage.getItem('kp-sync')||'{}');o2.url=url;localStorage.setItem('kp-sync',JSON.stringify(o2));}catch(e){}}
+  AUTH={user:r.user,name:r.name,role:r.role,staffId:r.staffId,session:r.session,local:false};saveAuth();
+  loginD.pass='';location.reload();
+ }catch(e){loginD.busy=false;loginD.err='Tidak dapat menghubungi server. Periksa internet dan alamat server.';render();}}
+function doLogout(){
+ if(!AUTH||AUTH.local)return;
+ if(!logoutArmed){logoutArmed=true;render();
+  if(isAdmin()&&pendingCount())toast(pendingCount()+' data belum tersinkron. Ketuk lagi jika tetap ingin keluar.');
+  setTimeout(function(){if(logoutArmed){logoutArmed=false;if(AUTH)render();}},4000);return;}
+ var wipe=isTech(),u=AUTH.user;
+ try{localStorage.removeItem('kp-auth');}catch(e){}
+ if(!wipe){location.reload();return;}
+ /* Akun teknisi: hapus salinan data di perangkat ini saat keluar. */
+ try{localStorage.removeItem('kp-sync-'+u);localStorage.removeItem('kp-fallback-'+u);}catch(e){}
+ try{if(IDB)IDB.close();}catch(e){}
+ var done=false,go=function(){if(done)return;done=true;location.reload();};
+ try{var rq=indexedDB.deleteDatabase('kasir-pro-'+u);rq.onsuccess=rq.onerror=rq.onblocked=go;}catch(e){go();}
+ setTimeout(go,1500);}
+
+function usrNewForm(){var T=techs();return{username:'',name:'',role:'teknisi',staffId:T[0]?T[0].id:'',password:'',active:true,edit:false};}
+function usrLoad(){
+ USR.busy=true;USR.err='';if(!USR.form)USR.form=usrNewForm();render();
+ api({action:'usr_list'}).then(function(r){USR.busy=false;
+  if(r&&r.error==='auth'){sessionExpired();return;}
+  if(r&&r.ok)USR.list=r.users;else USR.err=errMsg(r&&r.error);render();
+ }).catch(function(){USR.busy=false;USR.err='Tidak dapat menghubungi server.';render();});}
+function usrSave(){
+ var f=USR.form||usrNewForm(),un=String(f.username||'').trim().toLowerCase();
+ if(!/^[a-z0-9._-]{3,20}$/.test(un)){toast(errMsg('username'));return;}
+ if(f.role==='teknisi'&&!f.staffId){toast(errMsg('staff'));return;}
+ if(!f.edit&&String(f.password||'').length<6){toast(errMsg('pendek'));return;}
+ if(f.password&&String(f.password).length<6){toast(errMsg('pendek'));return;}
+ USR.busy=true;USR.err='';render();
+ api({action:'usr_save',user:{username:un,name:String(f.name||'').trim()||un,role:f.role,staffId:f.staffId,password:f.password||'',active:f.active!==false}}).then(function(r){USR.busy=false;
+  if(r&&r.error==='auth'){sessionExpired();return;}
+  if(r&&r.ok){USR.list=r.users;if(r.session){AUTH.session=r.session;saveAuth();}USR.form=usrNewForm();toast('Akun "'+un+'" tersimpan.');}
+  else{USR.err=errMsg(r&&r.error);}
+  render();
+ }).catch(function(){USR.busy=false;USR.err='Tidak dapat menghubungi server.';render();});}
+function usrDel(un){
+ USR.busy=true;USR.err='';USR.armedDel='';render();
+ api({action:'usr_del',username:un}).then(function(r){USR.busy=false;
+  if(r&&r.error==='auth'){sessionExpired();return;}
+  if(r&&r.ok){USR.list=r.users;toast('Akun dihapus.');}else USR.err=errMsg(r&&r.error);render();
+ }).catch(function(){USR.busy=false;USR.err='Tidak dapat menghubungi server.';render();});}
+function inviteLink(){return location.origin+location.pathname+'?server='+encodeURIComponent(SYNC.url);}
+function penggunaBody(){
+ if(!hasServer())return'<section class="card stack"><h2>Pengguna</h2><p class="small" style="margin:0">Login multi-peran aktif setelah aplikasi terhubung ke Google Sheets dan Anda masuk dengan akun admin. Buka tab <b>Google Sheets</b> untuk menghubungkan.</p></section>';
+ if(!USR.form)USR.form=usrNewForm();
+ var f=USR.form,T=techs(),h='<section class="card stack"><div class="row sb"><h2>Akun &amp; hak akses</h2><button class="btn sm" data-act="usr-reload"'+(USR.busy?' disabled':'')+'>Muat ulang</button></div>'+
+ '<div class="box small"><b>Admin</b>: bisa mengakses semuanya.<br><b>Teknisi 1 / Teknisi 2</b>: hanya <u>melihat</u> pekerjaan, hasil, bonus, dan kasbon <u>miliknya sendiri</u>. Tidak bisa mengubah apa pun. Data orang lain tidak pernah dikirim ke perangkatnya.</div>'+
+ (USR.err?'<div class="badge bad" role="alert" style="white-space:normal">'+esc(USR.err)+'</div>':'');
+ if(!USR.list)h+='<span class="muted small">'+(USR.busy?'Memuat daftar akun…':'Daftar belum dimuat.')+'</span>';
+ else h+=USR.list.map(function(u){var s=staff(u.staffId),arm=USR.armedDel===u.username;
+  return'<div class="box"><div class="row sb"><span><strong>'+esc(u.name||u.username)+'</strong> <span class="muted small">@'+esc(u.username)+'</span></span><span class="row" style="gap:6px"><span class="badge '+(u.role==='admin'?'good':'mute')+'">'+(u.role==='admin'?'Admin':'Teknisi')+'</span>'+(u.active?'':'<span class="badge bad">Nonaktif</span>')+'</span></div>'+
+  (u.role==='teknisi'?'<span class="small muted">Melihat data: '+esc(s?s.name:u.staffId)+'</span>':'<span class="small muted">Akses penuh</span>')+
+  '<div class="row"><button class="btn sm" data-act="usr-edit" data-v="'+esc(u.username)+'">Ubah / ganti sandi</button>'+(u.username===AUTH.user?'':'<button class="btn sm danger'+(arm?' armed':'')+'" data-act="'+(arm?'usr-del':'usr-ask-del')+'" data-v="'+esc(u.username)+'">'+(arm?'Ya, hapus':'Hapus')+'</button>')+'</div></div>';}).join('');
+ h+='</section><section class="card stack"><h2>'+(f.edit?'Ubah akun @'+esc(f.username):'Tambah akun')+'</h2><div class="grid">'+
+ '<label class="f">Username<input id="u-username" data-u="username" value="'+esc(f.username)+'"'+(f.edit?' readonly':'')+' autocomplete="off" autocapitalize="none" placeholder="cth. teknisi1"></label>'+
+ '<label class="f">Nama tampil<input id="u-name" data-u="name" value="'+esc(f.name)+'" autocomplete="off" placeholder="cth. Budi"></label>'+
+ '<label class="f">Peran<select id="u-role" data-u="role"><option value="teknisi"'+(f.role==='teknisi'?' selected':'')+'>Teknisi (hanya lihat)</option><option value="admin"'+(f.role==='admin'?' selected':'')+'>Admin (akses penuh)</option></select></label>'+
+ (f.role==='teknisi'?'<label class="f">Karyawan<select id="u-staff" data-u="staffId">'+T.map(function(s){return'<option value="'+esc(s.id)+'"'+(f.staffId===s.id?' selected':'')+'>'+esc(s.name)+' · '+esc(ROLE[s.role])+'</option>';}).join('')+'</select></label>':'')+
+ '<label class="f">'+(f.edit?'Sandi baru (kosongkan bila tidak diganti)':'Sandi (min. 6 karakter)')+'<input id="u-password" data-u="password" type="password" value="'+esc(f.password)+'" autocomplete="new-password"></label>'+
+ '<label class="f">Status<select id="u-active" data-u="active"><option value="1"'+(f.active!==false?' selected':'')+'>Aktif</option><option value="0"'+(f.active===false?' selected':'')+'>Nonaktif (tidak bisa masuk)</option></select></label></div>'+
+ '<div class="row"><button class="btn pri" data-act="usr-save"'+(USR.busy?' disabled':'')+'>💾 Simpan akun</button>'+(f.edit?'<button class="btn" data-act="usr-new">Batal</button>':'')+'</div>'+
+ '<span class="small muted">Mengganti sandi atau menonaktifkan akun langsung mengeluarkan perangkat lama akun tersebut.</span></section>'+
+ '<section class="card stack"><h2>Tautan undangan teknisi</h2><p class="small muted" style="margin:0">Kirim tautan ini ke teknisi supaya alamat server terisi otomatis di layar login. Mereka tetap harus memasukkan username &amp; sandi.</p><input id="inv" readonly value="'+esc(inviteLink())+'" onfocus="this.select()"><div><button class="btn sm" data-act="usr-copy-link">Salin tautan</button></div></section>';
+ return h;}
 
 function copy(text,ok){var f=function(){toast('Penyalinan gagal. Salin manual.');};try{navigator.clipboard.writeText(text).then(function(){toast(ok||'Berhasil disalin');},f);}catch(e){f();}}
 function csvRow(a){return a.map(function(v){return'"'+String(v==null?'':v).replace(/"/g,'""')+'"';}).join(',');}
@@ -930,10 +1121,26 @@ function restoreFile(file){var fr=new FileReader();fr.onload=function(){try{var 
 
 function act(a,el){
  var v=el.dataset.v,i=+el.dataset.i,t,k;
- if(a==='tab'){tab=v;armed=null;if(v==='riwayat'&&dayAuto)day=iso(new Date());render();window.scrollTo(0,0);}
+ if(!AUTH){
+  if(a==='login')doLogin();
+  else if(a==='login-url'){loginD.editUrl=true;render();}
+  else if(a==='login-local'){AUTH={role:'admin',local:true,user:'lokal',name:'Admin (lokal)',session:''};saveAuth();location.reload();}
+  return;}
+ /* Akun teknisi: hanya boleh melihat. Tindakan lain diabaikan walau tombolnya dipaksa muncul. */
+ if(isTech()&&['tab','mon','tek-toggle','sy-now','logout'].indexOf(a)<0)return;
+ if(a==='logout')doLogout();
+ else if(a==='tek-toggle'){openTx=openTx===v?null:v;render();}
+ else if(a==='usr-reload')usrLoad();
+ else if(a==='usr-new'){USR.form=usrNewForm();render();}
+ else if(a==='usr-edit'){var uu=(USR.list||[]).find(function(x){return x.username===v;});if(uu){USR.form={username:uu.username,name:uu.name,role:uu.role,staffId:uu.staffId||(techs()[0]?techs()[0].id:''),password:'',active:uu.active,edit:true};render();window.scrollTo(0,document.body.scrollHeight);}}
+ else if(a==='usr-save')usrSave();
+ else if(a==='usr-ask-del'){USR.armedDel=v;render();}
+ else if(a==='usr-del')usrDel(v);
+ else if(a==='usr-copy-link')copy(inviteLink(),'Tautan undangan disalin');
+ else if(a==='tab'){tab=v;armed=null;if(v==='riwayat'&&dayAuto)day=iso(new Date());render();window.scrollTo(0,0);}
  else if(a==='go-sheets'){tab='atur';aturTab='sheets';render();window.scrollTo(0,0);}
  else if(a==='hint-off'){PREFS.hint=true;savePrefs();render();}
- else if(a==='atur'){aturTab=v;render();}
+ else if(a==='atur'){aturTab=v;if(v==='pengguna'&&hasServer()&&!USR.list&&!USR.busy)usrLoad();else render();}
  else if(a==='mon'){var p=month.split('-'),d=new Date(+p[0],+p[1]-1+(+v),1);month=iso(d).slice(0,7);openTx=null;render();}
  else if(a==='flt'){flt=v;openTx=null;armed=null;render();}
  else if(a==='dnav'){day=addDays(day,+v);dayAuto=(day===iso(new Date()));openTx=null;render();}
@@ -1029,15 +1236,16 @@ function act(a,el){
  else if(a==='backup')download('cadangan-kasir-'+iso(new Date())+'.json',exportAll(),'application/json');
  else if(a==='sy-test'){
   if(!/^https:\/\/script\.google\.com\//.test(SYNC.url)){toast('Tautan harus diawali https://script.google.com/');return;}
-  if(!SYNC.token){toast('Isi kode rahasia.');return;}
   toast('Menguji koneksi…');
-  api({action:'ping'}).then(function(r){
-   if(r&&r.ok){toast('Terhubung ke Sheet "'+r.name+'". Mengirim data…');if(!SYNC.linked){Object.keys(DOCS).forEach(function(kk){SYNC.pending[kk]=1;});SYNC.linked=true;}saveSync();syncNow(true);}
-   else toast(r&&r.error==='token'?'Kode rahasia tidak cocok dengan TOKEN di skrip.':'Skrip menjawab, tetapi ada kendala.');
+  post(SYNC.url,{action:'ping'}).then(function(r){
+   if(r&&r.ok&&r.v>=2){
+    if(!hasServer()){toast('Server ditemukan. Silakan masuk dengan akun admin.');setTimeout(function(){try{localStorage.removeItem('kp-auth');}catch(e){}location.reload();},900);}
+    else{toast('Terhubung ke server. Mengirim data…');syncNow(true);}
+   }else toast('Skrip menjawab, tetapi masih versi lama. Tempel Code.gs terbaru lalu Deploy versi baru.');
   }).catch(function(){toast('Tidak dapat menghubungi skrip. Periksa tautan, akses "Anyone", dan internet.');});}
  else if(a==='sy-now')syncNow(true);
- else if(a==='sy-pull'){SYNC.since=0;saveSync();syncNow(true);}
- else if(a==='sy-off'){SYNC.url='';SYNC.token='';SYNC.linked=false;SYNC.state='idle';saveSync();render();toast('Terputus dari Google Sheets. Data di perangkat tetap aman.');}
+ else if(a==='sy-pull'){if(!hasServer())return;SYNC.since=0;saveSync();syncNow(true);}
+ else if(a==='sy-off'){SYNC.url='';SYNC.linked=false;SYNC.state='idle';saveSync();AUTH={role:'admin',local:true,user:'lokal',name:'Admin (lokal)',session:''};saveAuth();USR.list=null;render();toast('Terputus dari Google Sheets. Data di perangkat tetap aman (mode lokal).');}
  else if(a==='exp-tx'){var L=txs.filter(function(x){return inM(x.date,month)||inM(x.doneDate,month);});
   download('nota-'+month+'.csv','\ufeff'+[['Tgl masuk','Tgl selesai','Tgl diambil','No nota','Pelanggan','No HP','Perangkat','IMEI/SN','Keluhan','Teknisi','Bayar','Status','Total','Modal sparepart','Laba bersih','% bagi hasil','Bagi hasil','% fee','Fee unit','Total teknisi','Sisa toko']].concat(L.map(function(x){var c=calc(x);
    return[x.date,x.doneDate||'',x.pickDate||'',x.no,x.customer,x.phone,x.device,x.imei,x.complaint,techName(x.techId),x.pay,statusOf(x),c.total,c.partCost,c.net,c.share,Math.round(c.bh),c.fee,Math.round(c.feeAmt),Math.round(c.tech),Math.round(c.shop)];})).map(csvRow).join('\n'),'text/csv');}
@@ -1048,6 +1256,9 @@ function act(a,el){
 document.addEventListener('click',function(e){var b=e.target.closest('[data-act]');if(b)act(b.dataset.act,b);});
 document.addEventListener('input',function(e){
  var el=e.target,ds=el.dataset;
+ if(ds.lg){loginD[ds.lg]=el.value;return;}
+ if(ds.u){if(!USR.form)USR.form=usrNewForm();USR.form[ds.u]=ds.u==='active'?(el.value==='1'):el.value;if(ds.u==='role'){if(el.value==='teknisi'&&!USR.form.staffId&&techs()[0])USR.form.staffId=techs()[0].id;render();}return;}
+ if(!isAdmin())return;
  if(ds.money!==undefined){
   var val=moneyFix(el);
   if(ds.ed!==undefined){if(editD.items&&editD.items[+ds.i]){editD.items[+ds.i][ds.k]=val;editSums();}}
@@ -1070,8 +1281,11 @@ document.addEventListener('input',function(e){
  else if(ds.ep!==undefined)editD.pin=el.value;
  else if(ds.ap!==undefined)apprD.pin=el.value;
  else if(ds.sy){SYNC[ds.sy]=el.value.trim();saveSync();}});
+document.addEventListener('keydown',function(e){if(e.key==='Enter'&&!AUTH&&e.target&&e.target.dataset&&e.target.dataset.lg){e.preventDefault();doLogin();}});
 document.addEventListener('change',function(e){
  var el=e.target,ds=el.dataset;
+ if(ds.lgShow!==undefined){loginD.show=el.checked;render();return;}
+ if(!isAdmin())return;
  if(el.id==='restore-file'){if(el.files&&el.files[0])restoreFile(el.files[0]);el.value='';return;}
  if(ds.money!==undefined)return;
  if(ds.dn){if(el.value){day=el.value;dayAuto=(day===iso(new Date()));openTx=null;render();}}
@@ -1097,19 +1311,32 @@ document.addEventListener('visibilitychange',function(){
  if(document.visibilityState!=='visible')return;
  var td=iso(new Date());if(dayAuto&&day!==td){day=td;if(!typing())render();}
  syncNow(false);});
-setInterval(function(){if(document.visibilityState==='visible'&&SYNC.url)syncNow(false);},90000);
+setInterval(function(){if(document.visibilityState==='visible'&&hasServer())syncNow(false);},90000);
 
 async function boot(){
- loadPrefs();applyTheme();loadSync();render();
+ loadPrefs();applyTheme();
+ /* Tautan undangan dari admin: ?server=<alamat Apps Script> */
+ try{var sv=new URLSearchParams(location.search).get('server');
+  if(sv&&/^https:\/\/script\.google\.com\//.test(sv)){var o0={};try{o0=JSON.parse(localStorage.getItem('kp-sync')||'{}');}catch(e){}o0.url=sv;localStorage.setItem('kp-sync',JSON.stringify(o0));}
+  if(location.search)history.replaceState(null,'',location.pathname+location.hash);}catch(e){}
+ loadAuth();loadSync();
+ if(!AUTH){render();return;}
+ if(isTech())tab='t-ringkas';
+ render();
  var rows=[];
  try{IDB=await idbOpen();rows=await idbAll();}
- catch(e){IDB=null;try{var fb=JSON.parse(localStorage.getItem('kp-fallback')||'{}');Object.keys(fb).forEach(function(k){rows.push({k:k,v:fb[k]});});}catch(x){}}
+ catch(e){IDB=null;try{var fb=JSON.parse(localStorage.getItem('kp-fallback'+ns())||'{}');Object.keys(fb).forEach(function(k){rows.push({k:k,v:fb[k]});});}catch(x){}}
  rows.forEach(function(r){DOCS[r.k]=r.v;});
  rebuild();
- var c0=DOCS['cfg/main'];
- if(c0&&(c0.staff||[]).some(function(s){return s.role!=='admin'&&(+s.base||0)>0;}))saveCfg();
+ if(isAdmin()){
+  var c0=DOCS['cfg/main'];
+  if(c0&&(c0.staff||[]).some(function(s){return s.role!=='admin'&&(+s.base||0)>0;}))saveCfg();
+  /* Pertama kali admin masuk di perangkat yang sudah berisi data: kirim semuanya ke Sheet. */
+  if(hasServer()&&!SYNC.linked){Object.keys(DOCS).forEach(function(kk){SYNC.pending[kk]=1;});SYNC.linked=true;saveSync();}
+  pubPool();
+ }
  render();
- if(SYNC.url)syncNow(false);
+ if(hasServer())syncNow(false);
  try{if(document.fonts&&document.fonts.load){await Promise.all([document.fonts.load('800 26px Archivo'),document.fonts.load('700 15px "IBM Plex Sans"'),document.fonts.load('500 14px "IBM Plex Sans"'),document.fonts.load('700 24px "IBM Plex Mono"'),document.fonts.load('500 14px "IBM Plex Mono"')]);imgCache={key:'',url:''};if(!typing())render();}}catch(e){}
 }
 try{if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0)navigator.serviceWorker.register('sw.js').catch(function(){});}catch(e){}
