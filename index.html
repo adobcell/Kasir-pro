@@ -8,8 +8,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,800&family=IBM+Plex+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap">
 <style>
 :root,[data-tema=hijau]{--bg:#EBEFEA;--surface:#fff;--surface2:#F4F7F3;--fg:#16211D;--muted:#586861;--line:#D3DBD4;--accent:#0B7A5A;--accent-fg:#fff;--accent-soft:#D6EEE4;--good:#1B7F4B;--warn:#9A5B00;--bad:#B3261E;--good-soft:#D8EFDF;--warn-soft:#F8E9CC;--bad-soft:#F7DEDB;--r:8px;--rs:6px;--bw:1px;--f-d:'Archivo',system-ui,sans-serif;--f-b:'IBM Plex Sans',system-ui,sans-serif;--f-m:'IBM Plex Mono',ui-monospace,monospace}
@@ -138,7 +138,8 @@ var PROSES=['Diterima','Dikerjakan','Menunggu konfirmasi'];
 var WARRS=[0,7,14,30,60,90],PAYS=['Tunai','Transfer','QRIS'];
 var STMSG={'Diterima':'terima','Dikerjakan':'proses','Menunggu konfirmasi':'konfirmasi','Selesai':'selesai','Diambil':'garansi'};
 var MSGS=[['terima','Bukti penerimaan unit'],['proses','Unit sedang dikerjakan'],['konfirmasi','Minta persetujuan biaya'],['selesai','Unit selesai, siap diambil'],['garansi','Info garansi'],['batal','Pemberitahuan pembatalan']];
-var CLAIMRES=['Diperbaiki ulang','Komponen diganti','Ditolak (di luar ketentuan garansi)'];
+var REFUND='Refund penuh (unit tidak bisa diperbaiki)';
+var CLAIMRES=['Diperbaiki ulang','Komponen diganti',REFUND,'Ditolak (di luar ketentuan garansi)'];
 var THEMES=[['hijau','Hijau Bengkel','#EBEFEA','#16211D','#0B7A5A'],['malam','Malam Hijau','#0F1613','#E6EEE9','#3DD6A3'],['samudra','Samudra','#E7EEF7','#0F2036','#0A5FD0'],['senja','Senja','#0D1322','#E9EDF8','#F2B544'],['mawar','Mawar','#F3ECF0','#2A1420','#B01E5B'],['kontras','Kontras Tinggi','#FFFFFF','#000000','#000000']];
 var SVC=['000018f0-0000-1000-8000-00805f9b34fb','0000ff00-0000-1000-8000-00805f9b34fb','e7810a71-73ae-499d-8c15-faa9aef0c3f2','49535343-fe7d-4ae5-8fa9-9fafd205e455','0000ffe0-0000-1000-8000-00805f9b34fb','0000fee7-0000-1000-8000-00805f9b34fb','00001101-0000-1000-8000-00805f9b34fb'];
 var HEAD={
@@ -209,6 +210,11 @@ function isFin(t){return statusOf(t)==='Selesai'||statusOf(t)==='Diambil';}
 function finDate(t){return t.doneDate||t.date;}
 function cancelDate(t){return t.cancelAt||t.date;}
 function claimOK(c){return !c.status||c.status==='disetujui';}
+function refundClaim(t){return (t.claims||[]).find(function(c){return c.result===REFUND&&claimOK(c);});}
+function refundDue(){var L=[];txs.forEach(function(t){(t.claims||[]).forEach(function(c){if(c.result===REFUND&&claimOK(c)&&!c.refundedAt)L.push({t:t,c:c});});});return L;}
+function refBadge(t){var cs=(t.claims||[]).filter(function(c){return c.result===REFUND&&c.status!=='ditolak';});if(!cs.length)return'';var c=cs[0];
+ return claimOK(c)?'<span class="badge bad">'+(c.refundedAt?'Refund selesai':'Refund: uang belum dikembalikan')+'</span>':'<span class="badge warn">Refund menunggu ACC Owner</span>';}
+function refTag(t){return refundClaim(t)?' + REFUND':'';}
 function lockLabel(t){return t.lockType==='pass'?'Sandi':t.lockType==='pattern'?'Pola':'Tidak ada';}
 function lockInternal(t){return t.lockType==='pass'?'Sandi '+(t.lockPass||'-'):t.lockType==='pattern'?'Pola '+((t.lockPat&&t.lockPat.length)?t.lockPat.join(' → '):'-'):'Tidak ada';}
 function warr(t){
@@ -256,7 +262,7 @@ function rowFor(k,o){
  var coll=k.split('/')[0],base=[o.id,o.updated,o.deleted?1:0];
  var js=JSON.stringify(o);if(js.length>48000){var o2=Object.assign({},o);delete o2.signature;js=JSON.stringify(o2);}
  if(coll==='tx'){var c=calc(o),w=warr(o);
-  return base.concat([o.date,cell(o.no),cell(o.customer),cell(o.phone),cell(o.device),cell(o.imei),cell(o.complaint),techName(o.techId),statusOf(o),o.pay,
+  return base.concat([o.date,cell(o.no),cell(o.customer),cell(o.phone),cell(o.device),cell(o.imei),cell(o.complaint),techName(o.techId),statusOf(o)+refTag(o),o.pay,
    cell((o.items||[]).map(function(i){return i.name+' x'+(i.qty||1)+' @'+i.price;}).join('; ')),c.jasa,c.partRev,c.partCost,c.total,Math.round(c.tech),0,Math.round(c.shop),o.warrantyDays||0,(w&&w.until)||'',(o.claims||[]).length,js]);}
  if(coll==='exp')return base.concat([o.date,cell(o.cat),cell(o.note),+o.amount||0,js]);
  return base.concat(['Pengaturan toko',js]);}
@@ -326,7 +332,7 @@ function calc(t){
 function monthStats(m){
  var F=txs.filter(function(t){return isActive(t)&&isFin(t)&&inM(finDate(t),m);});
  var E=exps.filter(function(e){return inM(e.date,m);});
- var a={nMasuk:0,nProses:0,nSelesai:F.length,nBatal:0,total:0,jasa:0,partRev:0,partCost:0,net:0,bh:0,feeAmt:0,tech:0,shop0:0,shop:0,byTech:{},byCat:{},days:{},claimCost:0,claimN:0,exp:0,expN:E.length};
+ var a={nMasuk:0,nProses:0,nSelesai:F.length,nBatal:0,total:0,jasa:0,partRev:0,partCost:0,net:0,bh:0,feeAmt:0,tech:0,shop0:0,shop:0,byTech:{},byCat:{},days:{},claimCost:0,claimN:0,exp:0,expN:E.length,E:E,refundN:0,refundAmt:0};
  function bt(id){return a.byTech[id]||(a.byTech[id]={masuk:0,proses:0,selesai:0,batal:0,net:0,bh:0,feeAmt:0,tech:0,shop:0});}
  function dr(d){return a.days[d]||(a.days[d]={masuk:0,selesai:0,batal:0,total:0,net:0,tech:0,shop:0});}
  txs.forEach(function(t){
@@ -337,10 +343,14 @@ function monthStats(m){
   a.total+=c.total;a.jasa+=c.jasa;a.partRev+=c.partRev;a.partCost+=c.partCost;a.net+=c.net;a.bh+=c.bh;a.feeAmt+=c.feeAmt;a.tech+=c.tech;a.shop0+=c.shop0;a.shop+=c.shop;
   b.selesai++;b.net+=c.net;b.bh+=c.bh;b.feeAmt+=c.feeAmt;b.tech+=c.tech;b.shop+=c.shop;
   d.selesai++;d.total+=c.total;d.net+=c.net;d.tech+=c.tech;d.shop+=c.shop;});
- txs.forEach(function(t){(t.claims||[]).forEach(function(c){if(claimOK(c)&&inM(c.date,m)){a.claimN++;a.claimCost+=+c.cost||0;}});});
+ txs.forEach(function(t){(t.claims||[]).forEach(function(c){if(claimOK(c)&&inM(c.date,m)){a.claimN++;
+   if(c.result===REFUND){var r=calc(t),b2=bt(t.techId);a.refundN++;a.refundAmt+=r.total;a.claimCost+=r.partCost;
+    a.total-=r.total;a.jasa-=r.jasa;a.partRev-=r.partRev;a.net-=r.net;a.bh-=r.bh;a.feeAmt-=r.feeAmt;a.tech-=r.tech;a.shop0-=r.shop0;a.shop-=r.shop;
+    b2.net-=r.net;b2.bh-=r.bh;b2.feeAmt-=r.feeAmt;b2.tech-=r.tech;b2.shop-=r.shop;b2.refund=(b2.refund||0)+1;}
+   else a.claimCost+=+c.cost||0;}});});
  E.forEach(function(e){a.exp+=+e.amount||0;a.byCat[e.cat]=(a.byCat[e.cat]||0)+(+e.amount||0);});
  a.base=admins().reduce(function(x,s){return x+(+s.base||0);},0);
- a.adminUnit=F.length*(+cfg.adminUnitFee||0);
+ a.adminUnit=(F.length-a.refundN)*(+cfg.adminUnitFee||0);
  a.adminOmzet=a.net*num(cfg.adminOmzetRate)/100;
  a.adminBonus=a.adminUnit+a.adminOmzet;
  a.rajinPool=a.shop*num(cfg.rajinRate)/100;
@@ -507,11 +517,13 @@ function msgText(t,type){
  return H+'Kami informasikan bahwa pengerjaan nota '+no+' untuk unit '+dev+' telah dibatalkan'+(t.cancelReason?'\n\nAlasan: '+t.cancelReason:'')+'.\n\nTerima kasih atas pengertian Bapak/Ibu. 🙏'+F;}
 function waLink(t,msg){return'https://wa.me/'+normPhone(t.phone)+'?text='+encodeURIComponent(msg);}
 function waOwner(t,cl){
- var m='*PERMOHONAN ACC KLAIM GARANSI*\n\nToko: '+cfg.shop+'\nNota: '+t.no+'\nPelanggan: '+(t.customer||'-')+'\nPerangkat: '+(t.device||'-')+'\nTanggal klaim: '+fdate(cl.date)+'\nKeluhan: '+cl.issue+'\nTindak lanjut: '+cl.result+'\nBiaya ditanggung toko: '+rp(cl.cost)+'\n\nMohon balas *ACC* atau *TOLAK*.';
+ var m='*PERMOHONAN ACC KLAIM GARANSI*\n\nToko: '+cfg.shop+'\nNota: '+t.no+'\nPelanggan: '+(t.customer||'-')+'\nPerangkat: '+(t.device||'-')+'\nTanggal klaim: '+fdate(cl.date)+'\nKeluhan: '+cl.issue+'\nTindak lanjut: '+cl.result+(cl.result===REFUND?' (uang dikembalikan penuh '+rp(calc(t).total)+')':'')+'\nBiaya ditanggung toko: '+rp(cl.cost)+'\n\nMohon balas *ACC* atau *TOLAK*.';
  return'https://wa.me/'+normPhone(cfg.ownerPhone)+'?text='+encodeURIComponent(m);}
 
+function refundBanner(){var L=refundDue();if(!L.length)return'';
+ return'<section class="card stack" style="border-color:var(--bad)"><strong>⚠ '+L.length+' refund garansi menunggu dikembalikan ke pelanggan</strong>'+L.map(function(x){return'<span class="small">'+esc(x.t.no)+' · '+esc(x.t.customer||'-')+' · '+esc(x.t.device)+' · '+rp(calc(x.t).total)+'</span>';}).join('')+'<span class="small muted">Buka nota di tab Nota, lalu tekan "Tandai uang sudah dikembalikan" setelah uang diserahkan.</span></section>';}
 function view(){var f={kasir:vKasir,riwayat:vNota,gaji:vGaji,biaya:vBiaya,laporan:vLaporan,atur:vAtur}[tab]||vKasir;
- try{return f();}catch(e){return'<section class="card stack"><strong>Halaman gagal dimuat</strong><span class="small muted">'+esc(e&&e.message)+'</span><div><button class="btn sm" data-act="tab" data-v="kasir">Kembali ke Input Data</button></div></section>';}}
+ try{return((tab==='kasir'||tab==='riwayat')?refundBanner():'')+f();}catch(e){return'<section class="card stack"><strong>Halaman gagal dimuat</strong><span class="small muted">'+esc(e&&e.message)+'</span><div><button class="btn sm" data-act="tab" data-v="kasir">Kembali ke Input Data</button></div></section>';}}
 function shell(){
  var tabs=[['kasir','Input Data'],['riwayat','Nota'],['gaji','Gaji'],['biaya','Biaya'],['laporan','Laporan'],['atur','Atur']];
  var showMon=['gaji','biaya','laporan'].indexOf(tab)>=0||(tab==='riwayat'&&(flt==='bulan'||flt==='batal')),sl=syncLabel();
@@ -632,7 +644,10 @@ function claimsHTML(t,w,canc){
    '<span class="small muted">Setelah disimpan, klaim kembali berstatus "Menunggu persetujuan Owner".</span>'+
    '<div class="row"><button class="btn pri sm" data-act="save-claim-edit" data-v="'+id+'">💾 Simpan perubahan klaim</button><button class="btn sm" data-act="abort-claim-edit">Batal</button></div>';
   }else{
-   h+='<span class="small">'+esc(cl.result)+(cl.cost?' · biaya toko '+rp(cl.cost):'')+'</span><span class="muted small">'+esc(cl.issue)+'</span>'+(cl.decidedAt?'<span class="muted small">Keputusan Owner: '+fdate(cl.decidedAt)+'</span>':'');
+   if(cl.result===REFUND&&st!=='ditolak'){var tot=calc(t).total;
+    h+='<div class="box"><strong>'+(st==='disetujui'?(cl.refundedAt?'✅ Uang sudah dikembalikan ke pelanggan ('+fdate(cl.refundedAt)+')':'⚠ INFO ADMIN: kembalikan uang PENUH '+rp(tot)+' ke pelanggan'):'Menunggu ACC Owner untuk refund '+rp(tot))+'</strong><span class="small muted">Unit tidak bisa diperbaiki. Setelah disetujui: nota tidak dihitung sebagai pendapatan, bagi hasil teknisi dibatalkan di bulan refund, dan modal sparepart ditanggung toko.</span>'+
+    (st==='disetujui'&&!cl.refundedAt?'<div><button class="btn sm pri" data-act="refund-done" data-v="'+id+'" data-i="'+i+'">Tandai uang sudah dikembalikan</button></div>':'')+'</div>';}
+   h+='<span class="small">'+esc(cl.result)+(cl.cost&&cl.result!==REFUND?' · biaya toko '+rp(cl.cost):'')+'</span><span class="muted small">'+esc(cl.issue)+'</span>'+(cl.decidedAt?'<span class="muted small">Keputusan Owner: '+fdate(cl.decidedAt)+'</span>':'');
    if(ap){
     h+='<div class="box"><strong>Konfirmasi Owner: '+(apprD.mode==='ok'?'SETUJUI':'TOLAK')+' klaim</strong><label class="f">PIN Owner<input id="ap-pin" type="password" inputmode="numeric" data-ap="1" autocomplete="off"></label>'+
     '<div class="row"><button class="btn pri sm" data-act="do-acc" data-v="'+id+'">Konfirmasi</button><button class="btn sm" data-act="abort-acc">Batal</button></div></div>';
@@ -647,7 +662,7 @@ function claimsHTML(t,w,canc){
    h+='<div class="box"><strong>Catat klaim garansi baru</strong><label class="f">Keluhan pelanggan<input id="cl-issue" data-cl="issue" value="'+esc(claimD.issue)+'" placeholder="cth. layar kembali bergaris" autocomplete="off"></label>'+
    '<div class="grid"><label class="f">Tindak lanjut<select id="cl-result" data-cl="result">'+CLAIMRES.map(function(r){return'<option'+(claimD.result===r?' selected':'')+'>'+esc(r)+'</option>';}).join('')+'</select></label>'+
    '<label class="f">Biaya ditanggung toko'+moneyBox('id="cl-cost" data-cl="cost"',claimD.cost)+'</label></div>'+
-   '<span class="small muted">Klaim baru berstatus "Menunggu persetujuan Owner" dan belum dihitung di laporan.</span>'+
+   '<span class="small muted">Klaim baru berstatus "Menunggu persetujuan Owner" dan belum dihitung di laporan. Pilih "Refund penuh" bila unit tidak bisa diperbaiki lagi: uang pelanggan dikembalikan penuh dan Owner perlu menyetujui.</span>'+
    '<div class="row"><button class="btn pri sm" data-act="save-claim" data-v="'+id+'">💾 Simpan klaim</button><button class="btn sm" data-act="abort-claim">Batal</button></div></div>';
   }else h+='<div><button class="btn sm" data-act="ask-claim" data-v="'+id+'">+ Catat klaim garansi</button></div>';}
  return h;}
@@ -720,7 +735,7 @@ function vNota(){
  var total=0;L.forEach(function(t){if(isActive(t))total+=calc(t).total;});
  h+='<section class="card"><div class="row sb" style="margin-bottom:12px"><h2>'+L.length+' nota</h2><span class="num">'+rp(total)+'</span></div>'+
  L.map(function(t){var c=calc(t),o2=openTx===t.id;
-  return'<div class="tx'+(isActive(t)?'':' cancelled')+'"><button class="tx-h" data-act="toggle-tx" data-v="'+t.id+'" aria-expanded="'+o2+'"><span class="tx-title"><strong class="num">'+esc(t.no)+'</strong> <span class="muted small">'+fdate(t.date)+' · '+esc(t.pay)+'</span><br>'+esc(t.customer||'Tanpa nama')+(t.device?' <span class="muted">· '+esc(t.device)+'</span>':'')+(t.complaint?'<br><span class="muted small">'+esc(t.complaint)+'</span>':'')+'<br><span class="muted small">Teknisi '+esc(techName(t.techId))+'</span></span><span class="num"><strong>'+rp(c.total)+'</strong></span></button><div class="row">'+statusBadge(t)+warrBadge(t)+(flt==='hari'?dayTags(t,day):'')+'</div>'+(o2?detail(t):'')+'</div>';}).join('')+'</section>';
+  return'<div class="tx'+(isActive(t)?'':' cancelled')+'"><button class="tx-h" data-act="toggle-tx" data-v="'+t.id+'" aria-expanded="'+o2+'"><span class="tx-title"><strong class="num">'+esc(t.no)+'</strong> <span class="muted small">'+fdate(t.date)+' · '+esc(t.pay)+'</span><br>'+esc(t.customer||'Tanpa nama')+(t.device?' <span class="muted">· '+esc(t.device)+'</span>':'')+(t.complaint?'<br><span class="muted small">'+esc(t.complaint)+'</span>':'')+'<br><span class="muted small">Teknisi '+esc(techName(t.techId))+'</span></span><span class="num"><strong>'+rp(c.total)+'</strong></span></button><div class="row">'+statusBadge(t)+refBadge(t)+warrBadge(t)+(flt==='hari'?dayTags(t,day):'')+'</div>'+(o2?detail(t):'')+'</div>';}).join('')+'</section>';
  return h;}
 
 function rajinRow(s,st){var k=month+'|'+s.id,on=!!(cfg.rajinCheck&&cfg.rajinCheck[k]);
@@ -960,6 +975,7 @@ function act(a,el){
   if(!String(claimEdit.issue).trim()){toast('Keluhan tidak boleh kosong.');return;}
   var cl2=t.claims[claimEdit.ci];cl2.issue=String(claimEdit.issue).trim();cl2.result=claimEdit.result;cl2.cost=+claimEdit.cost||0;cl2.status='menunggu';cl2.decidedAt='';cl2.edited=iso(new Date());
   put('tx',t);claimEdit={id:null,ci:-1};render();toast('Klaim tersimpan. Menunggu persetujuan Owner.');}
+ else if(a==='refund-done'){t=findTx(v);if(!t||!t.claims||!t.claims[i])return;t.claims[i].refundedAt=iso(new Date());put('tx',t);render();toast('Refund ditandai sudah dikembalikan.');}
  else if(a==='ask-acc'){apprD={id:v,ci:i,mode:el.dataset.m||'ok',pin:''};claimEdit={id:null,ci:-1};render();}
  else if(a==='abort-acc'){apprD={id:null,ci:-1,mode:'ok',pin:''};render();}
  else if(a==='do-acc'){t=findTx(v);if(!t||apprD.id!==v||!t.claims[apprD.ci])return;
