@@ -138,6 +138,9 @@ var PROSES=['Diterima','Dikerjakan','Menunggu konfirmasi'];
 var WARRS=[0,7,14,30,60,90],PAYS=['Tunai','Transfer','QRIS'];
 var STMSG={'Diterima':'terima','Dikerjakan':'proses','Menunggu konfirmasi':'konfirmasi','Selesai':'selesai','Diambil':'garansi'};
 var MSGS=[['terima','Bukti penerimaan unit'],['proses','Unit sedang dikerjakan'],['konfirmasi','Minta persetujuan biaya'],['selesai','Unit selesai, siap diambil'],['garansi','Info garansi'],['batal','Pemberitahuan pembatalan']];
+var kasD={staff:'',kind:'kasbon',date:'',amount:'',note:'',pin:'',armed:null};
+function kasBal(sid){var b=0;kass.forEach(function(k){if(k.staffId!==sid)return;b+=(k.kind==='potong'?-1:1)*(+k.amount||0);});return b;}
+function kasMonth(sid,m){var b=0;kass.forEach(function(k){if(k.staffId===sid&&k.kind==='potong'&&String(k.date).slice(0,7)===m)b+=+k.amount||0;});return b;}
 var REFUND='Refund penuh (unit tidak bisa diperbaiki)';
 var CLAIMRES=['Diperbaiki ulang','Komponen diganti',REFUND,'Ditolak (di luar ketentuan garansi)'];
 var THEMES=[['hijau','Hijau Bengkel','#EBEFEA','#16211D','#0B7A5A'],['malam','Malam Hijau','#0F1613','#E6EEE9','#3DD6A3'],['samudra','Samudra','#E7EEF7','#0F2036','#0A5FD0'],['senja','Senja','#0D1322','#E9EDF8','#F2B544'],['mawar','Mawar','#F3ECF0','#2A1420','#B01E5B'],['kontras','Kontras Tinggi','#FFFFFF','#000000','#000000']];
@@ -145,6 +148,7 @@ var SVC=['000018f0-0000-1000-8000-00805f9b34fb','0000ff00-0000-1000-8000-00805f9
 var HEAD={
  tx:['ID','Diperbarui','Dihapus','Tanggal','No Nota','Pelanggan','No HP','Perangkat','IMEI/SN','Keluhan','Teknisi','Status','Bayar','Rincian','Jasa','Sparepart','Modal Sparepart','Total','Komisi Teknisi','Bonus Admin','Bagian Toko','Garansi (hari)','Garansi Sampai','Jumlah Klaim','DataJSON'],
  exp:['ID','Diperbarui','Dihapus','Tanggal','Kategori','Keterangan','Jumlah','DataJSON'],
+ kas:['ID','Diperbarui','Dihapus','Tanggal','Karyawan','Jenis','Jumlah','Catatan','DataJSON'],
  cfg:['ID','Diperbarui','Dihapus','Nama','DataJSON']};
 
 function defaultCfg(){return{id:'main',shop:'ADOB CELL',addr:'',phone:'',warrantyDays:30,
@@ -155,7 +159,7 @@ function defaultCfg(){return{id:'main',shop:'ADOB CELL',addr:'',phone:'',warrant
   {id:'t-exp',name:'Teknisi 2',role:'expert',base:0,share:40,fee:2}]};}
 function defaultPrefs(){return{theme:'auto',fs:'m',paper:32,pmode:'img',autoPrint:false,chunk:100,btName:'',hint:false,sopSetujui:false};}
 
-var cfg=defaultCfg(),txs=[],exps=[],DOCS={},IDB=null,PREFS=defaultPrefs();
+var cfg=defaultCfg(),txs=[],exps=[],kass=[],DOCS={},IDB=null,PREFS=defaultPrefs();
 var SYNC={url:'',token:'1ZluH9xw20_MoCtch428PVuNuwyJHJt_cTmqd9OvNzGw',since:0,pending:{},last:0,state:'idle',err:'',linked:false};
 var BT={dev:null,ch:null,name:''},syncing=false,installEv=null,syncTimer=null;
 var tab='kasir',aturTab='toko',month=iso(new Date()).slice(0,7),day=iso(new Date()),dayAuto=true;
@@ -240,8 +244,8 @@ function idbAll(){return new Promise(function(res,rej){var q=IDB.transaction('do
 function idbPut(k,v){try{IDB.transaction('docs','readwrite').objectStore('docs').put({k:k,v:v});}catch(e){}}
 function persist(k){if(IDB)idbPut(k,DOCS[k]);else try{localStorage.setItem('kp-fallback',JSON.stringify(DOCS));}catch(e){}}
 function rebuild(){
- txs=[];exps=[];var c=null;
- Object.keys(DOCS).forEach(function(k){var o=DOCS[k];if(!o||o.deleted)return;if(k.indexOf('tx/')===0)txs.push(o);else if(k.indexOf('exp/')===0)exps.push(o);else if(k==='cfg/main')c=o;});
+ txs=[];exps=[];kass=[];var c=null;
+ Object.keys(DOCS).forEach(function(k){var o=DOCS[k];if(!o||o.deleted)return;if(k.indexOf('tx/')===0)txs.push(o);else if(k.indexOf('exp/')===0)exps.push(o);else if(k.indexOf('kas/')===0)kass.push(o);else if(k==='cfg/main')c=o;});
  cfg=Object.assign(defaultCfg(),c||{});
  if(!cfg.staff||!cfg.staff.length)cfg.staff=defaultCfg().staff;
  cfg.staff.forEach(function(s){
@@ -264,6 +268,7 @@ function rowFor(k,o){
  if(coll==='tx'){var c=calc(o),w=warr(o);
   return base.concat([o.date,cell(o.no),cell(o.customer),cell(o.phone),cell(o.device),cell(o.imei),cell(o.complaint),techName(o.techId),statusOf(o)+refTag(o),o.pay,
    cell((o.items||[]).map(function(i){return i.name+' x'+(i.qty||1)+' @'+i.price;}).join('; ')),c.jasa,c.partRev,c.partCost,c.total,Math.round(c.tech),0,Math.round(c.shop),o.warrantyDays||0,(w&&w.until)||'',(o.claims||[]).length,js]);}
+ if(coll==='kas'){var sk=staff(o.staffId);return base.concat([o.date,sk?sk.name:o.staffId,o.kind==='potong'?'Potong gaji':'Kasbon',+o.amount||0,cell(o.note),js]);}
  if(coll==='exp')return base.concat([o.date,cell(o.cat),cell(o.note),+o.amount||0,js]);
  return base.concat(['Pengaturan toko',js]);}
 function api(body){
@@ -286,7 +291,7 @@ async function syncNow(manual){
  if(typeof navigator.onLine==='boolean'&&!navigator.onLine){SYNC.state='offline';statusRefresh();if(manual)toast('Perangkat offline. Data disinkronkan saat tersambung.');return;}
  syncing=true;SYNC.state='busy';statusRefresh();var changed=false;
  try{
-  var by={tx:[],exp:[],cfg:[]};
+  var by={tx:[],exp:[],cfg:[],kas:[]};
   Object.keys(SYNC.pending).forEach(function(k){if(!DOCS[k]){delete SYNC.pending[k];return;}var c=k.split('/')[0];if(by[c])by[c].push(k);});
   for(var coll in by){var ks=by[coll];
    for(var i=0;i<ks.length;i+=40){var part=ks.slice(i,i+40),snap={};
@@ -749,11 +754,30 @@ function vGaji(){
   h+='<section class="card"><div class="row sb"><div><h2>'+esc(s.name)+'</h2><span class="muted small">'+ROLE[s.role]+' · '+(adm?st.nSelesai+' unit selesai (toko)':b.selesai+' unit selesai')+'</span></div><span class="badge '+(paid?'good':'warn')+'">'+(paid?'Dibayar '+fdate(paid):'Belum dibayar')+'</span></div><div class="ledger" style="margin-top:10px">'+
   (adm?'<div class="ln"><span>Gaji pokok</span><span class="num">'+rp(s.base)+'</span></div><div class="ln"><span>Bonus unit ('+st.nSelesai+' × '+rp(cfg.adminUnitFee)+')</span><span class="num">'+rp(st.adminUnit)+'</span></div><div class="ln"><span>Bonus omzet ('+pct(cfg.adminOmzetRate)+' × laba bersih '+rp(st.net)+')</span><span class="num">'+rp(st.adminOmzet)+'</span></div>'
    :'<div class="ln"><span>Laba bersih unit dikerjakan</span><span class="num">'+rp(b.net)+'</span></div><div class="ln"><span>Bagi hasil ('+pct(s.share)+')</span><span class="num">'+rp(b.bh)+'</span></div><div class="ln"><span>Fee unit ('+pct(s.fee)+' dari bagian toko)</span><span class="num">'+rp(b.feeAmt)+'</span></div>')+
-  r.html+'<div class="ln tot"><span>Total diterima</span><span class="num">'+rp(tot)+'</span></div></div>'+
+  r.html+'<div class="ln tot"><span>Total diterima</span><span class="num">'+rp(tot)+'</span></div>'+(kasBal(s.id)||kasMonth(s.id,month)?'<div class="ln"><span>Potongan kasbon bulan ini</span><span class="num">− '+rp(kasMonth(s.id,month))+'</span></div><div class="ln tot"><span>Diterima bersih</span><span class="num">'+rp(tot-kasMonth(s.id,month))+'</span></div><div class="ln"><span>Sisa kasbon belum lunas</span><span class="num '+(kasBal(s.id)>0?'neg':'')+'">'+rp(kasBal(s.id))+'</span></div>':'')+'</div>'+
   '<div style="margin-top:12px"><button class="btn sm" data-act="paid" data-v="'+s.id+'">'+(paid?'Batalkan tanda dibayar':'Tandai sudah dibayar')+'</button></div></section>';});
+ h+=kasHTML();
  h+='<section class="card"><div class="ledger"><div class="ln"><span>Total gaji admin + bagi hasil + bonus</span><span class="num">'+rp(st.payroll)+'</span></div><div class="ln tot"><span>Sisa bersih toko</span><span class="num '+(st.netShop<0?'neg':'pos')+'">'+rp(st.netShop)+'</span></div></div><p class="muted small" style="margin:8px 0 0">Sisa bersih = sisa toko − gaji admin − bonus admin − bonus rajin − pengeluaran − klaim garansi disetujui.</p></section>';
  return h;}
 
+function kasHTML(){
+ if(!kasD.date)kasD.date=iso(new Date());if(!kasD.staff&&cfg.staff[0])kasD.staff=cfg.staff[0].id;
+ var h='<section class="card stack"><h2>Kasbon tim</h2><span class="muted small">Kasbon = uang muka gaji. Dicatat sebagai piutang karyawan (bukan biaya toko) dan dilunasi lewat potongan gaji. Perlu PIN Owner.</span>'+
+ '<div class="grid"><label class="f">Karyawan<select id="ks-staff" data-ks="staff">'+cfg.staff.map(function(s){return'<option value="'+esc(s.id)+'"'+(kasD.staff===s.id?' selected':'')+'>'+esc(s.name)+'</option>';}).join('')+'</select></label>'+
+ '<label class="f">Jenis<select id="ks-kind" data-ks="kind"><option value="kasbon"'+(kasD.kind==='kasbon'?' selected':'')+'>Kasbon baru (uang keluar)</option><option value="potong"'+(kasD.kind==='potong'?' selected':'')+'>Potong gaji (pelunasan)</option></select></label>'+
+ '<label class="f">Tanggal<input id="ks-date" type="date" data-ks="date" value="'+esc(kasD.date)+'"></label>'+
+ '<label class="f">Jumlah'+moneyBox('id="ks-amount" data-ks="amount"',kasD.amount)+'</label>'+
+ '<label class="f">Catatan<input id="ks-note" data-ks="note" value="'+esc(kasD.note)+'" placeholder="cth. kebutuhan keluarga" autocomplete="off"></label>'+
+ '<label class="f">PIN Owner<input id="ks-pin" type="password" inputmode="numeric" data-ks="pin" value="'+esc(kasD.pin)+'" autocomplete="new-password"></label></div>'+
+ '<div><button class="btn pri" data-act="save-kas">💾 Simpan</button></div>';
+ var any=false;
+ cfg.staff.forEach(function(s){var bal=kasBal(s.id),L=kass.filter(function(k){return k.staffId===s.id;}).sort(function(a,b){return String(b.date).localeCompare(String(a.date))||(b.updated-a.updated);});
+  if(!L.length)return;any=true;
+  h+='<div class="box"><div class="row sb"><strong>'+esc(s.name)+'</strong><span class="badge '+(bal>0?'warn':'good')+'">Sisa kasbon '+rp(bal)+'</span></div>'+
+  L.slice(0,8).map(function(k){var pot=k.kind==='potong';return'<div class="row sb" style="flex-wrap:nowrap;align-items:flex-start"><span style="min-width:0"><span class="small">'+fdate(k.date)+' · '+(pot?'Potong gaji':'Kasbon')+'</span>'+(k.note?'<br><span class="muted small">'+esc(k.note)+'</span>':'')+'</span><span class="num '+(pot?'pos':'neg')+'">'+(pot?'− ':'+ ')+rp(k.amount)+'</span><button class="btn sm danger'+(kasD.armed===k.id?' armed':'')+'" data-act="'+(kasD.armed===k.id?'del-kas':'ask-del-kas')+'" data-v="'+k.id+'">'+(kasD.armed===k.id?'Ya, hapus':'Hapus')+'</button></div>';}).join('')+
+  (L.length>8?'<span class="muted small">+ '+(L.length-8)+' catatan lama (semua ada di Sheet "Kasbon")</span>':'')+'</div>';});
+ if(any)h+='<span class="muted small">Menghapus catatan kasbon juga meminta PIN Owner (isi kolom PIN di atas lebih dulu).</span>';
+ return h+'</section>';}
 function vBiaya(){
  var st=monthStats(month),E=st.E.slice().sort(function(a,b){return b.date.localeCompare(a.date);});
  var h='<section class="card stack"><h2>Catat pengeluaran toko</h2><div class="grid"><label class="f">Tanggal<input id="e-date" type="date" data-e="date" value="'+esc(expDraft.date)+'"></label>'+
@@ -988,6 +1012,15 @@ function act(a,el){
  else if(a==='del-exp'){armed=null;drop('exp',v);render();toast('Pengeluaran dihapus');}
  else if(a==='toggle-rajin'){cfg.rajinCheck=cfg.rajinCheck||{};k=month+'|'+v;cfg.rajinCheck[k]=!cfg.rajinCheck[k];saveCfg();render();toast(cfg.rajinCheck[k]?'Bonus rajin diaktifkan.':'Bonus rajin dibatalkan.');}
  else if(a==='paid'){cfg.paid=cfg.paid||{};k=month+'|'+v;if(cfg.paid[k])delete cfg.paid[k];else cfg.paid[k]=iso(new Date());saveCfg();render();}
+ else if(a==='save-kas'){var am=+kasD.amount||0,sf=staff(kasD.staff);
+  if(!sf){toast('Pilih karyawan.');return;}if(am<=0){toast('Isi jumlah.');return;}
+  if(!cfg.ownerPinH){toast('PIN Owner belum diatur. Atur di Atur › Toko & tarif.');return;}
+  if(!ownerOK(kasD.pin)){toast('PIN Owner salah.');return;}
+  if(kasD.kind==='potong'&&am>kasBal(sf.id)){toast('Potongan melebihi sisa kasbon ('+rp(kasBal(sf.id))+').');return;}
+  put('kas',{id:uid(),date:kasD.date||iso(new Date()),staffId:sf.id,kind:kasD.kind==='potong'?'potong':'kasbon',amount:am,note:String(kasD.note).trim()});
+  kasD.amount='';kasD.note='';kasD.pin='';kasD.armed=null;render();toast(kasD.kind==='potong'?'Potongan gaji dicatat.':'Kasbon dicatat.');}
+ else if(a==='ask-del-kas'){kasD.armed=v;render();}
+ else if(a==='del-kas'){if(!ownerOK(kasD.pin)){toast('Isi PIN Owner yang benar di kolom PIN untuk menghapus.');return;}kasD.armed=null;kasD.pin='';drop('kas',v);render();toast('Catatan kasbon dihapus.');}
  else if(a==='save-exp'){var amt=+expDraft.amount||0;if(amt<=0||!expDraft.date){toast('Isi tanggal dan jumlah pengeluaran.');return;}
   put('exp',{id:uid(),date:expDraft.date,cat:expDraft.cat,amount:amt,note:String(expDraft.note).trim()});
   var keep={date:expDraft.date,cat:expDraft.cat};expDraft=newExp();expDraft.date=keep.date;expDraft.cat=keep.cat;month=keep.date.slice(0,7);render();toast('Pengeluaran tersimpan');}
@@ -1021,6 +1054,7 @@ document.addEventListener('input',function(e){
   else if(ds.i!==undefined&&ds.k!==undefined){draft.items[+ds.i][ds.k]=val;var sm=document.getElementById('sum');if(sm)sm.innerHTML=sumHTML();}
   else if(ds.e)expDraft[ds.e]=val;
   else if(ds.cl)claimD[ds.cl]=val;
+  else if(ds.ks)kasD[ds.ks]=val;
   else if(ds.ce)claimEdit[ds.ce]=val;
   else if(ds.c){cfg[ds.c]=val;saveCfg();}
   else if(ds.s){var sp=staff(ds.s);if(sp){sp[ds.f]=val;saveCfg();}}
@@ -1030,6 +1064,7 @@ document.addEventListener('input',function(e){
  else if(ds.d){draft[ds.d]=el.value;if(ds.d==='techId'){var s2=document.getElementById('sum');if(s2)s2.innerHTML=sumHTML();}else if(ds.d==='lockType')render();}
  else if(ds.e)expDraft[ds.e]=el.value;
  else if(ds.cl)claimD[ds.cl]=el.value;
+ else if(ds.ks){kasD[ds.ks]=el.value;if(ds.ks==='staff'||ds.ks==='kind')render();}
  else if(ds.ce)claimEdit[ds.ce]=el.value;
  else if(ds.cx)cancelD.reason=el.value;
  else if(ds.ep!==undefined)editD.pin=el.value;
