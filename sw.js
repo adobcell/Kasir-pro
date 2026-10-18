@@ -1,4 +1,4 @@
-const CACHE_NAME = 'adob-cell-kasir-v18';
+const CACHE_NAME = 'adob-cell-kasir-v19';
 
 const FILES = [
   './',

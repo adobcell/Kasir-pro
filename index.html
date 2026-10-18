@@ -146,10 +146,12 @@ var REFUND='Refund penuh (unit tidak bisa diperbaiki)';
 var CLAIMRES=['Diperbaiki ulang','Komponen diganti',REFUND,'Ditolak (di luar ketentuan garansi)'];
 var THEMES=[['hijau','Hijau Bengkel','#EBEFEA','#16211D','#0B7A5A'],['malam','Malam Hijau','#0F1613','#E6EEE9','#3DD6A3'],['samudra','Samudra','#E7EEF7','#0F2036','#0A5FD0'],['senja','Senja','#0D1322','#E9EDF8','#F2B544'],['mawar','Mawar','#F3ECF0','#2A1420','#B01E5B'],['kontras','Kontras Tinggi','#FFFFFF','#000000','#000000']];
 var SVC=['000018f0-0000-1000-8000-00805f9b34fb','0000ff00-0000-1000-8000-00805f9b34fb','e7810a71-73ae-499d-8c15-faa9aef0c3f2','49535343-fe7d-4ae5-8fa9-9fafd205e455','0000ffe0-0000-1000-8000-00805f9b34fb','0000fee7-0000-1000-8000-00805f9b34fb','00001101-0000-1000-8000-00805f9b34fb'];
+var RKH=['ID','Diperbarui','Dihapus','Periode','Unit Diambil','Omzet','Modal Sparepart','Laba Bersih Nota','Bagi Hasil Teknisi','Fee Unit Teknisi','Bonus Admin','Gaji Pokok Admin (bulanan)','Bonus Rajin (bulanan)','Pengeluaran Toko','Biaya Klaim/Refund','Laba Bersih Toko','Rincian Tim','Rincian Pengeluaran','Status Buku','DataJSON'];
 var HEAD={
  tx:['ID','Diperbarui','Dihapus','Tanggal','No Nota','Pelanggan','No HP','Perangkat','IMEI/SN','Keluhan','Teknisi','Status','Bayar','Rincian','Jasa','Sparepart','Modal Sparepart','Total','Komisi Teknisi','Bonus Admin','Bagian Toko','Garansi (hari)','Garansi Sampai','Jumlah Klaim','DataJSON'],
  exp:['ID','Diperbarui','Dihapus','Tanggal','Kategori','Keterangan','Jumlah','DataJSON'],
  kas:['ID','Diperbarui','Dihapus','Tanggal','Karyawan','Jenis','Jumlah','Catatan','DataJSON'],
+ rkd:RKH,rkw:RKH,rkb:RKH,
  tb:['ID','Diperbarui','Dihapus','Tahun','Bulan','Status','Unit Diambil','Omzet','Laba Bersih','Bagi Hasil Teknisi','Gaji Pokok','Bonus Admin','Bonus Rajin','Pengeluaran','Biaya Klaim','Laba Bersih Toko','Saldo Kumulatif','Ditutup Pada','DataJSON'],
  cfg:['ID','Diperbarui','Dihapus','Nama','DataJSON']};
 
@@ -273,12 +275,51 @@ function rebuild(){
   else{s.base=0;if(s.share==null||isNaN(+s.share))s.share=s.role==='expert'?40:30;if(s.fee==null||isNaN(+s.fee))s.fee=2;}
  });}
 /* Hanya Admin yang boleh mengubah data. Akun Teknisi hanya melihat (server juga menolak tulis dari teknisi). */
-function put(coll,o){if(!isAdmin()&&!(isFront()&&coll==='tx'))return;o.updated=Date.now();var k=coll+'/'+o.id;DOCS[k]=o;persist(k);mark(k);rebuild();pubPool();}
-function drop(coll,id){if(!isAdmin()&&!(isFront()&&coll==='tx'))return;var k=coll+'/'+id,o=DOCS[k];if(!o)return;o.deleted=true;o.updated=Date.now();persist(k);mark(k);rebuild();pubPool();}
+function put(coll,o){if(!isAdmin()&&!(isFront()&&coll==='tx'))return;o.updated=Date.now();var k=coll+'/'+o.id;DOCS[k]=o;persist(k);mark(k);rebuild();pubPool();rkSchedule();}
+function drop(coll,id){if(!isAdmin()&&!(isFront()&&coll==='tx'))return;var k=coll+'/'+id,o=DOCS[k];if(!o)return;o.deleted=true;o.updated=Date.now();persist(k);mark(k);rebuild();pubPool();rkSchedule();}
 var ppBusy=false;
 /* Nota yang dibuat Admin depan belum membawa persentase bagi hasil (Admin tidak boleh melihat tarif). Perangkat Owner mengisinya otomatis. */
 function snapRates(){txs.slice().forEach(function(t){if(t.share==null&&t.techId){var s=staff(t.techId);if(s&&s.role!=='admin'){t.share=num(s.share);t.fee=num(s.fee);put('tx',t);}}});}
-function saveCfg(){if(!isAdmin())return;cfg.id='main';cfg.updated=Date.now();DOCS['cfg/main']=cfg;persist('cfg/main');mark('cfg/main');if(!ppBusy)pubPool();}
+/* ===== Rekap keuangan harian / mingguan / bulanan -> Google Sheet (hanya Owner) ===== */
+var rkT=null;
+function rkSchedule(){if(!isAdmin())return;clearTimeout(rkT);rkT=setTimeout(pubRekap,4000);}
+function wkStart(d){var x=pd(d),dw=(x.getDay()+6)%7;x.setDate(x.getDate()-dw);return iso(x);}
+function wkNo(st){var x=pd(st);x.setDate(x.getDate()+3);var y=x.getFullYear(),j=new Date(y,0,4),w=1+Math.round(((x-j)/86400000-3+((j.getDay()+6)%7))/7);return{y:y,w:w};}
+function rkAgg(){return{n:0,refundN:0,total:0,partCost:0,net:0,bh:0,fee:0,tech:0,shop:0,exp:0,claim:0,byTech:{},cats:{}};}
+function rkCompute(){
+ var D={},W={},M={};
+ function g(o,k){return o[k]||(o[k]=rkAgg());}
+ function each(d,fn){fn(g(D,d));fn(g(W,wkStart(d)));fn(g(M,d.slice(0,7)));}
+ txs.forEach(function(t){
+  if(isActive(t)&&isPaid(t)){var c=calc(t);each(payDate(t),function(a){a.n++;a.total+=c.total;a.partCost+=c.partCost;a.net+=c.net;a.bh+=c.bh;a.fee+=c.feeAmt;a.tech+=c.tech;a.shop+=c.shop;a.byTech[t.techId]=(a.byTech[t.techId]||0)+c.tech;});}
+  (t.claims||[]).forEach(function(cl){if(!claimOK(cl)||!cl.date)return;var r=calc(t);
+   if(cl.result===REFUND)each(cl.date,function(a){a.refundN++;a.total-=r.total;a.partCost-=r.partCost;a.net-=r.net;a.bh-=r.bh;a.fee-=r.feeAmt;a.tech-=r.tech;a.shop-=r.shop;a.claim+=r.partCost;a.byTech[t.techId]=(a.byTech[t.techId]||0)-r.tech;});
+   else each(cl.date,function(a){a.claim+=+cl.cost||0;});});});
+ exps.forEach(function(e){if(!e.date)return;var v=+e.amount||0;each(e.date,function(a){a.exp+=v;a.cats[e.cat]=(a.cats[e.cat]||0)+v;});});
+ return{D:D,W:W,M:M};}
+function rkText(a){return{team:Object.keys(a.byTech).filter(function(id){return Math.abs(a.byTech[id])>0.5;}).map(function(id){return techName(id)+' '+nm(a.byTech[id]);}).join(' · '),
+ cats:Object.keys(a.cats).sort(function(x,y){return a.cats[y]-a.cats[x];}).map(function(c){return c+' '+nm(a.cats[c]);}).join(' · ')};}
+function rkDoc(coll,key,label,a,book,extra){
+ var ab=(a.n-a.refundN)*(+cfg.adminUnitFee||0)+a.net*num(cfg.adminOmzetRate)/100,tx=rkText(a),ex=extra||{};
+ var base=ex.base||0,rajin=ex.rajin||0,adminBonus=ex.adminBonus!=null?ex.adminBonus:ab;
+ return{id:key,kind:coll,label:label,n:a.n,total:a.total,partCost:a.partCost,net:a.net,bh:a.bh,fee:a.fee,adminBonus:adminBonus,base:base,rajin:rajin,exp:a.exp,claim:a.claim,
+  laba:ex.laba!=null?ex.laba:(a.shop-a.exp-a.claim-adminBonus-base-rajin),team:tx.team,cats:tx.cats,book:book||''};}
+function rkSet(coll,doc){
+ var k=coll+'/'+doc.id,old=DOCS[k],sig=JSON.stringify(doc);
+ if(old&&!old.deleted){var o2=Object.assign({},old);delete o2.updated;if(JSON.stringify(o2)===sig)return;}
+ doc.updated=Date.now();DOCS[k]=doc;persist(k);mark(k);}
+function pubRekap(){
+ if(!isAdmin())return;
+ var S=rkCompute(),keep={rkd:{},rkw:{},rkb:{}};
+ Object.keys(S.D).forEach(function(d){var id='d:'+d;keep.rkd[id]=1;
+  rkSet('rkd',rkDoc('rkd',id,HARI[pd(d).getDay()].slice(0,3)+', '+fdate(d),S.D[d],closedM(d.slice(0,7))?'Ditutup':''));});
+ Object.keys(S.W).forEach(function(w){var id='w:'+w,e=addDays(w,6),n=wkNo(w);keep.rkw[id]=1;
+  rkSet('rkw',rkDoc('rkw',id,'Minggu '+n.w+' · '+fdate(w)+' – '+fdate(e),S.W[w],closedM(w.slice(0,7))&&closedM(e.slice(0,7))?'Ditutup':''));});
+ Object.keys(S.M).forEach(function(m){var id='m:'+m,st=monthStats(m);keep.rkb[id]=1;var a=S.M[m];
+  var doc=rkDoc('rkb',id,mlabel(m),a,closedM(m)?'Ditutup':'Terbuka',{base:st.base,rajin:st.totalRajinPaid,adminBonus:st.adminBonus,laba:st.netShop});
+  doc.n=st.nSelesai;rkSet('rkb',doc);});
+ Object.keys(DOCS).forEach(function(k){var c=k.split('/')[0];if(keep[c]&&!keep[c][k.slice(c.length+1)]){var o=DOCS[k];if(o&&!o.deleted){o.deleted=true;o.updated=Date.now();persist(k);mark(k);}}});}
+function saveCfg(){if(!isAdmin())return;cfg.id='main';cfg.updated=Date.now();DOCS['cfg/main']=cfg;persist('cfg/main');mark('cfg/main');if(!ppBusy)pubPool();rkSchedule();}
 /* Nilai bonus rajin per bulan dihitung di perangkat Admin lalu ikut tersimpan di pengaturan,
    supaya Teknisi bisa melihat nominal bonusnya tanpa perlu membaca data seluruh toko. */
 function pubPool(){
@@ -302,7 +343,9 @@ function rowFor(k,o){
  if(coll==='tx'){var c=calc(o),w=warr(o);
   return base.concat([o.date,cell(o.no),cell(o.customer),cell(o.phone),cell(o.device),cell(o.imei),cell(o.complaint),techName(o.techId),statusOf(o)+refTag(o),o.pay,
    cell((o.items||[]).map(function(i){return i.name+' x'+(i.qty||1)+' @'+i.price;}).join('; ')),c.jasa,c.partRev,c.partCost,c.total,isFront()?'':(isPaid(o)?Math.round(c.tech):0),0,isFront()?'':(isPaid(o)?Math.round(c.shop):0),o.warrantyDays||0,(w&&w.until)||'',(o.claims||[]).length,js]);}
- if(coll==='tb')return base.concat([+o.year||0,mlabel(o.month),'Ditutup',+o.nUnit||0,Math.round(o.total||0),Math.round(o.net||0),Math.round(o.tech||0),Math.round(o.base||0),Math.round(o.adminBonus||0),Math.round(o.rajin||0),Math.round(o.exp||0),Math.round(o.claimCost||0),Math.round(o.netShop||0),Math.round(o.saldo||0),o.closedAt||'',js]);
+ if(coll==='tb'){base[0]="'"+o.id;}
+ if(coll.indexOf('rk')===0)return base.concat(["'"+o.label,o.n||0,Math.round(o.total||0),Math.round(o.partCost||0),Math.round(o.net||0),Math.round(o.bh||0),Math.round(o.fee||0),Math.round(o.adminBonus||0),Math.round(o.base||0),Math.round(o.rajin||0),Math.round(o.exp||0),Math.round(o.claim||0),Math.round(o.laba||0),o.team||'',o.cats||'',o.book||'',js]);
+ if(coll==='tb')return base.concat([+o.year||0,"'"+mlabel(o.month),'Ditutup',+o.nUnit||0,Math.round(o.total||0),Math.round(o.net||0),Math.round(o.tech||0),Math.round(o.base||0),Math.round(o.adminBonus||0),Math.round(o.rajin||0),Math.round(o.exp||0),Math.round(o.claimCost||0),Math.round(o.netShop||0),Math.round(o.saldo||0),o.closedAt||'',js]);
  if(coll==='kas'){var sk=staff(o.staffId);return base.concat([o.date,sk?sk.name:o.staffId,o.kind==='potong'?'Potong gaji':'Kasbon',+o.amount||0,cell(o.note),js]);}
  if(coll==='exp')return base.concat([o.date,cell(o.cat),cell(o.note),+o.amount||0,js]);
  return base.concat(['Pengaturan toko',js]);}
@@ -328,7 +371,7 @@ async function syncNow(manual){
  if(typeof navigator.onLine==='boolean'&&!navigator.onLine){SYNC.state='offline';statusRefresh();if(manual)toast('Perangkat offline. Data disinkronkan saat tersambung.');return;}
  syncing=true;SYNC.state='busy';statusRefresh();var changed=false;
  try{
-  var by={tx:[],exp:[],cfg:[],kas:[],tb:[]};
+  var by={tx:[],exp:[],cfg:[],kas:[],tb:[],rkd:[],rkw:[],rkb:[]};
   if(!canWrite())SYNC.pending={};
   Object.keys(SYNC.pending).forEach(function(k){if(!DOCS[k]){delete SYNC.pending[k];return;}var c=k.split('/')[0];if(by[c])by[c].push(k);});
   for(var coll in by){var ks=by[coll];
@@ -349,7 +392,7 @@ async function syncNow(manual){
    o.updated=d.updated;if(d.deleted)o.deleted=true;DOCS[d.k]=o;persist(d.k);delete SYNC.pending[d.k];changed=true;});
   SYNC.since=maxU;SYNC.last=Date.now();SYNC.state='idle';SYNC.err='';saveSync();
   if(changed)rebuild();
-  if(changed&&isAdmin())snapRates();
+  if(changed&&isAdmin()){snapRates();rkSchedule();}
   if(isTech())sopFlush();
   if(manual)toast('Sinkronisasi selesai.');
  }catch(e){
@@ -643,7 +686,7 @@ function clearSigPad(){var cv=document.getElementById('sig-canvas');if(cv)cv.get
 function vKasir(){
  var T=techs(),h='';
  if(!draft.techId&&T.length)draft.techId=T[0].id;
- if(!SYNC.url&&!PREFS.hint)h+='<section class="card row sb"><span class="small">Data baru tersimpan di perangkat ini. Hubungkan ke Google Sheets agar otomatis terbackup.</span><span class="row"><button class="btn sm pri" data-act="go-sheets">Hubungkan</button><button class="linkbtn" data-act="hint-off">Nanti</button></span></section>';
+ if(isAdmin()&&!SYNC.url&&!PREFS.hint)h+='<section class="card row sb"><span class="small">Data baru tersimpan di perangkat ini. Hubungkan ke Google Sheets agar otomatis terbackup.</span><span class="row"><button class="btn sm pri" data-act="go-sheets">Hubungkan</button><button class="linkbtn" data-act="hint-off">Nanti</button></span></section>';
  if(lastSaved){var u=notaImgURL(lastSaved);
   h+='<section class="card stack"><div class="row sb"><h2>Nota '+esc(lastSaved.no)+' tersimpan</h2><button class="linkbtn" data-act="close-nota">Tutup</button></div>'+
   (u?'<img class="notaimg" alt="Pratinjau nota" src="'+u+'">':'<pre class="nota">'+esc(notaText(lastSaved))+'</pre>')+printBtns(lastSaved)+
@@ -1213,10 +1256,10 @@ async function doLogin(){
  try{
   var r=await post(url,{action:'login',user:u,pass:p});
   if(!r||!r.ok){loginD.busy=false;loginD.err=errMsg(r&&r.error);loginD.pass='';render();return;}
-  var key='kp-sync'+(r.role==='teknisi'?'-'+r.user:''),o={};
+  var nsr=(r.role==='teknisi'||r.role==='front'),key='kp-sync'+(nsr?'-'+r.user:''),o={};
   try{o=JSON.parse(localStorage.getItem(key)||'{}');}catch(e){}
   o.url=url;delete o.token;localStorage.setItem(key,JSON.stringify(o));
-  if(r.role==='teknisi'){try{var o2=JSON.parse(localStorage.getItem('kp-sync')||'{}');o2.url=url;localStorage.setItem('kp-sync',JSON.stringify(o2));}catch(e){}}
+  if(nsr){try{var o2=JSON.parse(localStorage.getItem('kp-sync')||'{}');o2.url=url;localStorage.setItem('kp-sync',JSON.stringify(o2));}catch(e){}}
   AUTH={user:r.user,name:r.name,role:r.role,staffId:r.staffId,session:r.session,local:false};saveAuth();
   loginD.pass='';location.reload();
  }catch(e){loginD.busy=false;loginD.err='Tidak dapat menghubungi server. Periksa internet dan alamat server.';render();}}
@@ -1553,7 +1596,7 @@ async function boot(){
  catch(e){IDB=null;try{var fb=JSON.parse(localStorage.getItem('kp-fallback'+ns())||'{}');Object.keys(fb).forEach(function(k){rows.push({k:k,v:fb[k]});});}catch(x){}}
  rows.forEach(function(r){DOCS[r.k]=r.v;});
  rebuild();
- if(isAdmin())snapRates();
+ if(isAdmin()){snapRates();rkSchedule();}
  if(isAdmin()){
   var c0=DOCS['cfg/main'];
   if(c0&&(c0.staff||[]).some(function(s){return s.role!=='admin'&&(+s.base||0)>0;}))saveCfg();
