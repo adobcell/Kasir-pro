@@ -1,63 +1,57 @@
-# Kasir Servis Pro — Panduan Pemasangan
+# Panduan Pasang & Pakai — Kasir Servis Pro v9
 
-Isi paket: `index.html` (aplikasi), `manifest.webmanifest`, `sw.js`, `icon-192.png`, `icon-512.png`, `Code.gs` (skrip Google Sheets).
+## Isi paket
+| File | Fungsi | Taruh di mana |
+|---|---|---|
+| `index.html`, `sw.js`, `lacak.html`, `manifest.webmanifest`, ikon `.png` | Aplikasi (yang dibuka di HP) | **GitHub Pages** (repo publik tidak apa-apa) |
+| `Code.gs` | Server + database Google Sheets | **Apps Script saja. JANGAN diunggah ke GitHub** (berisi sandi awal Owner) |
+| `TATA-TERTIB-TIM*.md` | Contoh tata tertib untuk dibagikan ke tim | Bebas (cetak / kirim) |
 
-## 1. Pasang penghubung Google Sheets (±5 menit)
-1. Masuk ke Gmail yang ingin dipakai, buka https://sheets.google.com lalu buat Spreadsheet kosong (nama bebas, mis. "Data Kasir Servis").
-2. Menu **Ekstensi › Apps Script**. Hapus isi default, tempel seluruh isi `Code.gs`.
-3. Ubah baris `var TOKEN = '...'` menjadi kode rahasia buatan Anda (mis. 16 karakter acak). Simpan (ikon disket).
-4. Klik **Deploy › Deployment baru › Jenis: Aplikasi web**.
-   - Jalankan sebagai: **Saya**
-   - Yang memiliki akses: **Siapa saja**
-5. Klik Deploy, setujui izin akses Google (jika muncul "belum diverifikasi": Lanjutan › Buka proyek). Salin **URL aplikasi web** (berakhiran `/exec`).
-6. Di aplikasi: **Atur › Google Sheets**, tempel URL dan kode rahasia yang sama, lalu tekan **Hubungkan & uji**.
+## A. Pasang dari nol (±20 menit)
+1. **Google Sheet baru** → menu *Ekstensi › Apps Script* → hapus isi, tempel seluruh `Code.gs`.
+2. Ubah baris `ADMIN_PASSWORD_AWAL` (sandi Owner pertama) → simpan.
+3. Jalankan fungsi **`rapikanSemua`** (izinkan akses saat diminta) → sheet & warna terbentuk.
+4. Jalankan fungsi **`izinkanAkses`** sekali (memberi izin Google Drive untuk foto & cadangan harian otomatis).
+5. *Terapkan › Deployment baru › Aplikasi web*: jalankan sebagai **Saya**, akses **Siapa saja**. Salin URL `/exec`.
+6. Unggah `index.html`, `sw.js`, `lacak.html`, `manifest.webmanifest`, semua `.png` ke repo GitHub Pages → buka alamatnya di HP → *Tambahkan ke layar utama*.
+7. Di layar login: **Atur URL server** → tempel URL `/exec` → masuk sebagai Owner (username `admin`, sandi dari langkah 2) → segera ganti sandi.
+8. Ikuti kartu **Panduan awal** di tab Input (versi netral): nama toko, alamat, WA, PIN Owner, tarif bagi hasil, hubungkan Sheets.
+9. *Atur › Pengguna*: buat akun Admin depan & Teknisi (tiap orang akun sendiri).
 
-Sheet "Nota", "Pengeluaran", dan "Pengaturan" dibuat otomatis. Kolom terakhir `DataJSON` jangan diubah/dihapus karena dipakai untuk memulihkan data. Setelah mengubah kode skrip, buat deployment versi baru.
+**Update versi:** tempel `Code.gs` baru → *Terapkan › Kelola deployment › Edit › Versi baru* → jalankan `rapikanSemua`. Lalu unggah file aplikasi baru ke GitHub (nomor cache di `sw.js` sudah dinaikkan).
 
-Catatan keamanan: siapa pun yang tahu URL dan kode rahasia dapat membaca/menulis data, jadi jangan dibagikan.
+## B. Alur harian (terima unit baru)
+**Pilihan 1 — Cek dulu (default, bila kerusakan belum pasti)**
+1. Admin: Input Data → isi pelanggan, unit, keluhan, kunci layar, foto kondisi, tanda tangan → pilih **Teknisi pemeriksa** (mis. Teknisi 1) → *Simpan nota* (tanpa harga). Kirim bukti terima + tautan pantau ke WA pelanggan.
+2. Unit diserahkan ke teknisi pemeriksa. Teknisi cek dan melapor ke admin (lisan/WA).
+3. Admin: tab Nota → buka nota → **Hasil cek teknisi**: tulis temuan, tambah **tahap tindakan** dari yang paling ringan, tiap tahap diberi *Biaya ke pelanggan* + *Modal*. Contoh Oppo A5s restart: Tahap 1 “Instal ulang” Rp100.000 modal 0; Tahap 2 “Ganti IC eMMC” Rp350.000 modal 150.000. Bila perlu *Alihkan ke teknisi lain* (mis. Expert).
+4. **Kirim hasil cek (WhatsApp)** — pesan hanya memuat tindakan dan biaya (modal tidak terlihat pelanggan).
+5. Pelanggan setuju/nego → centang tahap yang disetujui (ubah biaya bila nego) → **Pakai tahap yang disetujui sebagai biaya nota**. Status otomatis *Dikerjakan*.
+6. Tahap 1 gagal? Centang tahap 2 (persetujuan baru) → tekan tombol pakai lagi → biaya nota menjadi gabungan tahap yang dicentang.
+7. Tidak bisa diperbaiki/batal setelah cek: isi **Biaya cek saja** → *Jadikan biaya nota*.
+8. Selesai → pelanggan ambil → status *Diambil* (baru saat ini omzet & bagi hasil dihitung).
 
-## 2. Taruh aplikasi di internet (HTTPS) agar bisa dipasang
-Bluetooth dan "Pasang aplikasi" hanya bekerja lewat HTTPS. Pilih salah satu (gratis):
-- **Netlify Drop**: buka https://app.netlify.com/drop, seret folder berisi semua berkas paket.
-- **GitHub Pages**: unggah semua berkas ke repositori, aktifkan Pages.
-- **Cloudflare Pages**: unggah sebagai proyek statis.
+**Pilihan 2 — Harga sudah pasti** (ganti LCD/baterai standar): pilih *Harga sudah pasti*, isi **Tindakan**, **Biaya ke pelanggan** (harga nego akhir, sudah termasuk modal) dan **Modal**. Laba bersih = Biaya − Modal.
 
-## 3. Pasang di HP
-Buka alamat tadi di **Chrome Android** › menu ⋮ › **Pasang aplikasi**. Ikonnya muncul di layar utama dan bisa dipakai offline.
+## C. Aturan peran
+- **Owner**: semua menu, laporan, gaji, backup, pengguna.
+- **Admin depan**: input nota, hasil cek, absen, stok (tanpa harga beli), tidak melihat laba/gaji/PIN.
+- **Teknisi**: hanya nota miliknya (tanpa data pelanggan), pendapatan sendiri, absen, kasbon, SOP.
 
-Ingin berkas APK? Buka https://www.pwabuilder.com, masukkan alamat aplikasi Anda, pilih Android, lalu unduh paketnya.
+## D. Yang perlu dicek sendiri setelah pasang
+Printer Bluetooth, kamera/foto, tautan pantau (`lacak.html`), cadangan Drive harian, dan jam server (zona WIB) hanya bisa dipastikan di perangkat dan Google Anda sendiri. Coba 1 nota uji dari awal sampai *Diambil*, lalu hapus.
 
-## 4. Hubungkan printer thermal
-1. Nyalakan printer, aktifkan Bluetooth dan Lokasi di HP (jangan dipasangkan lewat pengaturan HP).
-2. **Atur › Printer**: pilih lebar kertas (58/80 mm), tekan **Hubungkan printer**, pilih printer, lalu **Tes cetak**.
-3. Aktifkan **Cetak otomatis** bila nota ingin tercetak saat disimpan.
+> Sandi pengguna tersimpan apa adanya di sheet **Pengguna**. Jangan bagikan akses edit Sheet ke siapa pun selain Owner.
 
-Jika tes cetak gagal:
-- Browser hanya dapat memakai printer **Bluetooth LE (BLE)**. Printer Bluetooth Classic/SPP tidak muncul. Solusi: tombol **Bagikan gambar nota** lalu pilih aplikasi printer (mis. RawBT).
-- Cetak terpotong/berantakan: ubah **Kecepatan kirim** ke "Aman", atau mode cetak ke "Teks".
-- Lebar tidak pas: sesuaikan 58/80 mm.
+## E. Pengingat tim (tab Nota)
+- **📣 Pengingat tim** (Owner & Admin depan): centang isi (unit belum dicek, menunggu persetujuan/dikerjakan, selesai belum diambil, stok menipis, belum absen), tambah catatan, tekan **Kirim ke WhatsApp** → pilih grup tim. Isi pesan dihitung otomatis dari data saat ini.
+- **Pengumuman untuk tim** (Owner): tulis pengumuman untuk Semua / Teknisi / Admin depan. Muncul sebagai banner di aplikasi anggota tim sampai ia menekan “Sudah saya baca” (status baca tersimpan di HP masing-masing; Owner tidak melihat siapa yang sudah baca). Anggota menerimanya setelah aplikasi sinkron.
+- Tidak ada notifikasi dorong ke HP: pengingat dibaca saat aplikasi dibuka atau lewat pesan WhatsApp yang Anda kirim.
 
-## 5. Tema & tampilan
-**Atur › Tampilan**: 6 tema (Hijau Bengkel, Malam Hijau, Samudra, Senja, Mawar, Kontras Tinggi) + otomatis ikut HP, serta ukuran tulisan kecil/sedang/besar. Font ikut berganti sesuai tema.
+## F. Kondisi awal unit & laporan untuk pelanggan
+- Saat terima unit isi **Catatan kondisi awal** (mis. retak sudut kiri atas) dan ambil foto (maks. 4, disimpan di Google Drive toko).
+- Catatan kondisi ikut tercetak di nota.
+- Di tab Nota › buka nota › kotak **Kondisi awal unit**: tombol **Bagikan laporan kondisi awal** membuat satu gambar (data unit, catatan, foto, tanda tangan) yang bisa dikirim ke WhatsApp pelanggan sebagai bukti kondisi saat diterima. Foto tidak dicetak di nota thermal.
 
-## 6. Cadangan
-Data tersimpan di HP dan disinkronkan ke Sheet. Tambahan: **Atur › Data** untuk unduh cadangan .json / CSV. Sinkron memakai aturan "data terbaru menang", dan perubahan saat offline dikirim otomatis setelah online.
-
-## 7. Tutup buku bulanan & kinerja teknisi
-- **Laporan › Tutup buku**: setelah bulan rampung, tekan "Tutup buku bulan ini". Nota, status, pengeluaran, dan gaji pokok bulan itu terkunci dan rekapnya tersimpan. Bulan berikutnya otomatis mulai dari nol. Bisa dibuka kembali bila ada koreksi.
-- **Laporan › Kinerja teknisi**: jumlah unit tiap teknisi (selesai, proses, batal), pendapatan jasa, laba sparepart, dan komisinya, lengkap dengan daftar unit per teknisi.
-- **Laporan › Rekap semua bulan**: ringkasan nota, omzet, laba bersih, dan status Ditutup/Terbuka tiap bulan.
-
-## 8. Alur nota (versi terbaru)
-- **Kasir**: isi pelanggan, unit, keluhan, teknisi, dan rincian. Harga otomatis tampil sebagai rupiah (150.000). Nota baru berstatus **Cek**.
-- **Nota**: ubah status (Cek, Proses, Selesai, atau Batal), pilih metode pembayaran, atur masa garansi, dan **Edit nota** bila ada koreksi data.
-
-## 9. Fitur tambahan (versi 4)
-- **Kasir › Hari ini**: jumlah nota, nilai nota, unit dalam proses, unit menunggu diambil, dan rincian Tunai/Transfer/QRIS untuk dicocokkan saat tutup toko.
-- **Kondisi unit & kelengkapan**: catatan kondisi fisik dan aksesori (dengan tombol cepat) tercetak di nota sebagai bukti kondisi awal.
-- **Nota › Cari**: cari berdasarkan nama, nomor nota, nomor HP, perangkat, atau IMEI.
-- **Nota › Belum diambil**: daftar unit Selesai yang belum diambil beserta lama menunggu. Tersedia pesan "Pengingat pengambilan unit".
-- **Sandi/pola pelanggan** dihapus otomatis saat status Selesai (dan bisa dihapus manual).
-- **Laporan › Modal awal & balik modal**: isi modal, lihat sisa modal dan perkiraan balik modal.
-- **Atur › Keamanan**: kunci aplikasi dengan PIN 4–6 angka dan kunci otomatis.
-- Perbaikan: tombol "Pakai angka awal" tidak lagi menghapus daftar bulan yang sudah ditutup buku.
+## G. Form penerimaan unit lengkap
+Isian di Input Data (semua opsional, cukup ketuk): kunci layar (tombol Tidak ada / Sandi-PIN / Pola), jenis perangkat, warna, kelengkapan yang diserahkan, kondisi fisik, kondisi unit saat diterima, fungsi bermasalah, akun terkunci (iCloud/Google/FRP), riwayat servis, prioritas, estimasi selesai, catatan kondisi awal, foto, tanda tangan. Bisa diubah/dilengkapi lagi di tab Nota › kotak “Kelengkapan & kondisi unit”. Yang tercetak di nota dan laporan kondisi awal: jenis/warna, kelengkapan, kondisi fisik, kondisi saat diterima, fungsi bermasalah, estimasi. Akun terkunci, riwayat servis dan prioritas hanya untuk internal.

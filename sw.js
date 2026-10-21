@@ -1,4 +1,4 @@
-const CACHE_NAME = 'adob-cell-kasir-v19';
+const CACHE_NAME = 'adob-cell-kasir-v25';
 
 const FILES = [
   './',
@@ -52,7 +52,7 @@ self.addEventListener('fetch', event => {
           }
           return response;
         })
-        .catch(() => caches.match(request).then(r => r || caches.match('./index.html')))
+        .catch(() => caches.match(request).then(r => r || (url.pathname.endsWith('lacak.html') ? Response.error() : caches.match('./index.html'))))
     );
     return;
   }

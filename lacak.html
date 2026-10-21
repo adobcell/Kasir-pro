@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0B7A5A">
+<title>Lacak Unit Servis</title>
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root{--bg:#EBEFEA;--surface:#fff;--fg:#16211D;--muted:#586861;--line:#D3DBD4;--accent:#0B7A5A;--accent-soft:#D6EEE4;--bad:#B3261E;--warn:#9A5B00;--warn-soft:#F8E9CC}
+@media (prefers-color-scheme:dark){:root{--bg:#0F1613;--surface:#17211D;--fg:#E6EEE9;--muted:#97A99F;--line:#2B3B34;--accent:#3DD6A3;--accent-soft:#12372B;--bad:#F28B82;--warn:#E3A53B;--warn-soft:#3A2D12}}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font:16px/1.5 'IBM Plex Sans',system-ui,sans-serif;padding:0 16px 40px;-webkit-text-size-adjust:100%}
+.wrap{max-width:520px;margin:0 auto;display:grid;gap:14px;padding-top:20px}
+h1{font:800 1.4rem/1.15 'Archivo',system-ui,sans-serif;margin:0;letter-spacing:-.01em}
+h2{font:700 1.05rem/1.2 'Archivo',system-ui,sans-serif;margin:0}
+.muted{color:var(--muted)}.small{font-size:.88rem}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:12px}
+.badge{display:inline-block;padding:4px 12px;border-radius:999px;font-weight:700;font-size:.95rem;background:var(--accent-soft);color:var(--accent);justify-self:start}
+.badge.warn{background:var(--warn-soft);color:var(--warn)}.badge.bad{background:#F7DEDB;color:var(--bad)}
+.dev{font:700 1.2rem/1.25 'Archivo',system-ui,sans-serif}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:0}
+.steps li{display:grid;grid-template-columns:28px 1fr;gap:10px;position:relative;padding-bottom:16px}
+.steps li:last-child{padding-bottom:0}
+.steps li::before{content:"";position:absolute;left:13px;top:26px;bottom:-2px;width:2px;background:var(--line)}
+.steps li:last-child::before{display:none}
+.steps .dot{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);background:var(--surface);display:grid;place-items:center;font-size:.8rem;font-weight:800;color:var(--muted)}
+.steps li.done .dot{background:var(--accent);border-color:var(--accent);color:#fff}
+.steps li.cur .dot{border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.steps li.done::before{background:var(--accent)}
+.steps b{display:block;line-height:1.3}
+.btn{display:inline-block;text-decoration:none;text-align:center;border:1px solid var(--accent);background:var(--accent);color:#fff;padding:.7rem 1rem;border-radius:8px;font-weight:700;font:inherit;font-weight:700;cursor:pointer}
+.btn.sec{background:transparent;color:var(--accent)}
+.foot{text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="card"><span class="muted">Memuat status unit…</span></div></div>
+<script>
+(function(){
+'use strict';
+var BULAN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+var q=new URLSearchParams(location.search),S=q.get('s')||'',C=(q.get('c')||'').toLowerCase();
+var app=document.getElementById('app'),timer=null,last=null;
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function fdate(s){var p=String(s||'').split('-');return p.length===3?(+p[2])+' '+BULAN[+p[1]-1]+' '+p[0]:'';}
+function addDays(s,n){var p=s.split('-'),d=new Date(+p[0],+p[1]-1,+p[2]);d.setDate(d.getDate()+n);return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
+function norm(p){var d=String(p||'').replace(/\D/g,'');if(!d)return'';if(d.indexOf('62')===0)return d;if(d.charAt(0)==='0')return'62'+d.slice(1);if(d.charAt(0)==='8')return'62'+d;return d;}
+var MSG={'Diterima':'Unit Anda sudah kami terima dan menunggu pemeriksaan teknisi.',
+ 'Dikerjakan':'Unit Anda sedang dikerjakan oleh teknisi kami.',
+ 'Menunggu konfirmasi':'Kami menunggu persetujuan Anda atas rincian biaya perbaikan. Mohon hubungi kami lewat WhatsApp agar pengerjaan bisa dilanjutkan.',
+ 'Selesai':'Kabar baik! Unit Anda sudah selesai dikerjakan dan siap diambil. Mohon membawa nota saat pengambilan.',
+ 'Diambil':'Unit sudah diserahkan kepada Anda. Terima kasih atas kepercayaan Anda.',
+ 'Dibatalkan':'Pengerjaan unit ini telah dibatalkan. Silakan hubungi kami bila ada yang ingin ditanyakan.'};
+function view(d){
+ var st=d.status,order=['Diterima','Dikerjakan','Selesai','Diambil'],idx=order.indexOf(st==='Menunggu konfirmasi'?'Dikerjakan':st);
+ var cls=st==='Dibatalkan'?'bad':(st==='Menunggu konfirmasi'?'warn':'');
+ var dates={'Diterima':d.date,'Selesai':d.doneDate,'Diambil':d.pickDate};
+ var lis=order.map(function(s,i){
+  var done=idx>i||(st==='Diambil'&&i<=3),cur=!done&&idx===i&&st!=='Dibatalkan';
+  var label=s==='Dikerjakan'&&st==='Menunggu konfirmasi'?'Menunggu persetujuan Anda':({Diterima:'Unit diterima',Dikerjakan:'Sedang dikerjakan',Selesai:'Selesai, siap diambil',Diambil:'Sudah diambil'})[s];
+  return'<li class="'+(done?'done':'')+(cur?' cur':'')+'"><span class="dot">'+(done?'✓':(i+1))+'</span><span><b>'+esc(label)+'</b>'+(dates[s]?'<span class="muted small">'+esc(fdate(dates[s]))+'</span>':'')+'</span></li>';}).join('');
+ var w='';
+ if(st==='Diambil'&&d.warrantyDays>0){var from=d.doneDate||d.pickDate||d.date;if(from)w='<div class="muted small">Garansi '+d.warrantyDays+' hari, berlaku sampai <b>'+esc(fdate(addDays(from,d.warrantyDays)))+'</b>. Simpan nota Anda.</div>';}
+ var wa=norm(d.phone),txt=encodeURIComponent('Halo '+(d.shop||'')+', saya ingin menanyakan unit '+(d.device||'')+' (nota '+(d.no||'')+').');
+ var h='<div><h1>'+esc(d.shop||'Status Unit Servis')+'</h1><div class="muted small">'+esc(d.addr||'')+'</div></div>'+
+ '<div class="card"><span class="muted small">Unit Anda</span><div class="dev">'+esc(d.device||'-')+'</div><span class="muted small">No. nota '+esc(d.no)+'</span>'+
+ '<span class="badge '+cls+'">'+esc(st==='Diambil'?'Sudah diambil':st==='Diterima'?'Diterima':st)+'</span><div>'+esc(MSG[st]||'')+'</div>'+w+'</div>';
+ if(st!=='Dibatalkan')h+='<div class="card"><h2>Perjalanan unit</h2><ol class="steps">'+lis+'</ol></div>';
+ if(wa)h+='<a class="btn" href="https://wa.me/'+wa+'?text='+txt+'" target="_blank" rel="noopener">Hubungi kami lewat WhatsApp</a>';
+ h+='<div class="foot muted small">Halaman ini hanya menampilkan status pengerjaan, tanpa harga dan data pribadi.<br>Diperbarui otomatis. <button class="btn sec" id="rf" style="padding:.35rem .8rem;margin-top:8px">Muat ulang</button></div>';
+ app.innerHTML=h;var b=document.getElementById('rf');if(b)b.onclick=load;}
+function fail(msg,sub){app.innerHTML='<div class="card"><h2>'+esc(msg)+'</h2><span class="muted">'+esc(sub||'')+'</span><div><button class="btn" id="rf">Coba lagi</button></div></div>';var b=document.getElementById('rf');if(b)b.onclick=load;}
+function load(){
+ if(!/^[A-Za-z0-9_-]{20,200}$/.test(S)||!/^[a-z0-9]{8,20}$/.test(C)){fail('Tautan tidak valid','Mohon pindai ulang QR di nota atau minta tautan baru ke toko.');return;}
+ fetch('https://script.google.com/macros/s/'+S+'/exec?lacak='+encodeURIComponent(C),{redirect:'follow'}).then(function(r){return r.json();}).then(function(d){
+  if(d&&d.ok){last=d;view(d);}
+  else if(d&&d.error==='notfound')fail('Unit tidak ditemukan','Nota mungkin belum tersinkron atau tautan salah. Silakan hubungi toko.');
+  else fail('Belum dapat dimuat','Coba lagi sebentar.');
+ }).catch(function(){if(last)return;fail('Tidak dapat terhubung','Periksa koneksi internet Anda lalu coba lagi.');});}
+load();
+timer=setInterval(function(){if(document.visibilityState==='visible'&&last)load();},60000);
+})();
+</script>
+</body>
+</html>
