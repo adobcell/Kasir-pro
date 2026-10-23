@@ -600,7 +600,7 @@ function notaText(t,o){
  if(!o.noHead){L=L.concat(ctr(String(cfg.shop).toUpperCase(),W));if(cfg.addr)L=L.concat(ctr(cfg.addr,W));if(cfg.phone)L=L.concat(ctr('Telp/WA '+cfg.phone,W));}
  L.push(eq,lr('NOTA SERVIS',t.no,W),eq,lr('Tanggal',fdate(t.date),W));
  if(t.customer)L=L.concat(kvT('Pelanggan',t.customer,W));
- if(t.phone)L=L.concat(kvT('No. HP',t.phone,W));
+ if(t.phone)L=L.concat(kvT('No. HP',maskPhone(t.phone),W));
  L.push(lr('Teknisi',techName(t.techId),W),dash,'DATA UNIT');
  if(t.device)L=L.concat(kvT('Perangkat',t.device,W));
  if(t.imei)L=L.concat(kvT('IMEI/SN',t.imei,W));
@@ -643,37 +643,37 @@ function drawNota0(t){
  function cen(str,wt,size,fam,lh,inset){setF(wt,size,fam);x.textAlign='center';lines(str,CW-(inset||0)*2).forEach(function(l){x.fillText(l,W/2,y);y+=fs(lh);});}
  function dash(){x.save();x.setLineDash([5,4]);x.lineWidth=1.5;x.beginPath();x.moveTo(M,y+3);x.lineTo(W-M,y+3);x.stroke();x.restore();y+=12;}
  function solid(w){x.lineWidth=w;x.beginPath();x.moveTo(M,y);x.lineTo(W-M,y);x.stroke();y+=w+8;}
- function sec(s){setF('800',12,DISP);x.textAlign='left';x.fillText(s,M,y);y+=fs(17);}
- function kv(k,v){if(!v)return;var lw=Math.round(CW*0.3);setF('600',14,SANS);x.textAlign='left';x.fillText(k,M,y);x.fillText(':',M+lw-9,y);
-  setF('500',14,SANS);lines(v,CW-lw).forEach(function(l){x.fillText(l,M+lw,y);y+=fs(18);});}
+ function sec(s){setF('800',14,DISP);x.textAlign='left';x.fillText(s,M,y);y+=fs(19);}
+ function kv(k,v){if(!v)return;var lw=Math.round(CW*0.3);setF('700',15,SANS);x.textAlign='left';x.fillText(k,M,y);x.fillText(':',M+lw-9,y);
+  setF('600',15,SANS);lines(v,CW-lw).forEach(function(l){x.fillText(l,M+lw,y);y+=fs(20);});}
  function bar(l,r){var h=fs(28);x.fillStyle='#000';x.fillRect(M,y,CW,h);x.fillStyle='#fff';setF('800',15,DISP);x.textAlign='left';x.fillText(l,M+8,y+fs(5));
   setF('700',14,MONO);x.textAlign='right';x.fillText(r,W-M-8,y+fs(6));x.fillStyle='#000';y+=h+10;}
  var c=calc(t);
  cen(String(cfg.shop).toUpperCase(),'800',26,DISP,30);
- if(cfg.addr)cen(cfg.addr,'500',13,SANS,17);if(cfg.phone)cen('Telp/WA '+cfg.phone,'600',13,SANS,17);
+ if(cfg.addr)cen(cfg.addr,'600',14,SANS,18);if(cfg.phone)cen('Telp/WA '+cfg.phone,'700',14,SANS,18);
  y+=6;solid(3);bar('NOTA SERVIS',t.no);
- kv('Tanggal',fdate(t.date));kv('Pelanggan',t.customer);kv('No. HP',t.phone);kv('Teknisi',techName(t.techId));
+ kv('Tanggal',fdate(t.date));kv('Pelanggan',t.customer);kv('No. HP',maskPhone(t.phone));kv('Teknisi',techName(t.techId));
  y+=2;dash();sec('DATA UNIT');kv('Perangkat',t.device);kv('IMEI / SN',t.imei);kv('Keluhan',t.complaint);kv('Kondisi awal',t.kondisi);fmPrint(t).forEach(function(l){kv(l[2],l[1]);});
  if(t.lockType&&t.lockType!=='none')kv('Kunci layar',lockLabel(t));
  y+=2;dash();sec('RINCIAN PEKERJAAN');
  (t.items||[]).forEach(function(i){var q=+i.qty||1;
   setF('700',15,SANS);x.textAlign='left';lines(i.name,CW).forEach(function(l){x.fillText(l,M,y);y+=fs(20);});
-  setF('500',14,MONO);x.textAlign='left';x.fillText(q+' x '+nm(i.price),M+8,y);
+  setF('700',15,MONO);x.textAlign='left';x.fillText(q+' x '+nm(i.price),M+8,y);
   setF('700',15,MONO);x.textAlign='right';x.fillText(nm(q*(+i.price||0)),W-M,y);y+=fs(26);});
  solid(2);setF('800',18,DISP);x.textAlign='left';x.fillText('TOTAL',M,y+fs(5));
  setF('700',24,MONO);x.textAlign='right';x.fillText('Rp '+nm(c.total),W-M,y);y+=fs(36);
- setF('500',14,SANS);x.textAlign='left';x.fillText('Pembayaran',M,y);setF('700',14,SANS);x.textAlign='right';x.fillText(t.pay||'-',W-M,y);y+=fs(22);
+ setF('700',15,SANS);x.textAlign='left';x.fillText('Pembayaran',M,y);setF('800',15,SANS);x.textAlign='right';x.fillText(t.pay||'-',W-M,y);y+=fs(22);
  solid(2);
- if(+t.warrantyDays>0){var y0=y;y+=8;cen('GARANSI '+t.warrantyDays+' HARI','800',17,DISP,22,6);cen('Berlaku sejak pekerjaan selesai','500',12,SANS,16,6);
-  if(cfg.terms)cen(cfg.terms,'400',11,SANS,15,6);y+=6;x.lineWidth=2;x.strokeRect(M,y0,CW,y-y0);y+=14;}
+ if(+t.warrantyDays>0){var y0=y;y+=8;cen('GARANSI '+t.warrantyDays+' HARI','800',12,DISP,16,6);cen('Berlaku sejak pekerjaan selesai','600',10,SANS,13,6);
+  if(cfg.terms)cen(cfg.terms,'600',10,SANS,13,6);y+=6;x.lineWidth=2;x.strokeRect(M,y0,CW,y-y0);y+=14;}
  if(t.signature){var im=sigImg(t.signature);y+=4;sec('TANDA TANGAN PELANGGAN');if(im){x.drawImage(im,M,y,150,50);y+=56;}}
  var tl=trkLink(t);
  if(tl){var qm=qrMatrix(tl);if(qm){var qn=qm.length,qq=2,qs=Math.max(2,Math.floor(Math.min(CW*0.66,210)/(qn+qq*2))),qz=(qn+qq*2)*qs,qx=Math.round((W-qz)/2);
   y+=4;sec('PANTAU STATUS UNIT');x.fillStyle='#fff';x.fillRect(qx,y,qz,qz);x.fillStyle='#000';
   QRPOS={qm:qm,qx:qx,y:y,qs:qs,qq:qq,qn:qn};
-  y+=qz+4;cen('Scan untuk melihat status unit Anda','500',12,SANS,16);y+=6;}}
+  y+=qz+4;cen('Scan untuk melihat status unit Anda','700',13,SANS,17);y+=6;}}
  y+=2;cen('Terima kasih atas kepercayaan Anda','700',15,SANS,20);
- cen('Mohon simpan nota ini dan bawa saat pengambilan unit.','400',12,SANS,16);y+=4;cen('* * * * *','700',14,MONO,18);
+ cen('Mohon simpan nota ini dan bawa saat pengambilan unit.','600',12,SANS,16);y+=4;cen('* * * * *','700',14,MONO,18);
  var out=document.createElement('canvas');out.width=W;out.height=Math.min(H,Math.ceil(y)+22);
  var ox=out.getContext('2d');ox.fillStyle='#fff';ox.fillRect(0,0,out.width,out.height);ox.drawImage(cv,0,0);return out;}
 function notaImgURL(t){
@@ -2916,6 +2916,10 @@ async function printTx(t){
   await btSend(PREFS.pmode==='text'?textBytes(t):rasterBytes(drawNota(t)));PRN.last[t.id]=Date.now();toast('Nota terkirim ke printer.');}
  catch(e){toast(btErr(e));}
  PRN.busy=false;}
+
+function maskPhone(p){var s=String(p||''),idx=[],i;for(i=0;i<s.length;i++)if(/\d/.test(s[i]))idx.push(i);
+ if(idx.length<6)return s;var st=Math.min(4,idx.length-5-2<0?0:4);if(idx.length-st<8&&idx.length>=8)st=Math.max(0,idx.length-8);
+ var a=s.split('');for(i=st;i<st+5&&i<idx.length;i++)a[idx[i]]='*';return a.join('');}
 
 /* ================= v8: stok, foto, pelacakan, pengingat, absensi, target, grafik, laporan, cadangan, aktivitas ================= */
 var ABSL={hadir:'Hadir',telat:'Telat',izin:'Izin',sakit:'Sakit',alpa:'Alpa',libur:'Libur'};
