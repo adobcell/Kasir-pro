@@ -147,6 +147,90 @@ tr.totrow td{font-weight:700;border-top:2px solid var(--fg)}
 @page{size:A4;margin:14mm}
 @media print{body.pr-rep>#app,body.pr-rep>#toast{display:none!important}body.pr-rep #printarea{display:block}body.pr-rep{background:#fff!important;padding:0!important}}
 
+/* ===== v10: tampilan baru (bengkel rapi: header gelap, form bernomor, kartu nota bergaris status, nav berikon) ===== */
+:root,[data-tema=hijau],[data-tema=samudra],[data-tema=mawar]{--hdr:#0F1F1A;--hdr-fg:#F2F7F4;--hdr-mute:rgba(242,247,244,.68);--hdr-line:rgba(255,255,255,.14)}
+[data-tema=samudra]{--hdr:#0B1B30}[data-tema=mawar]{--hdr:#2A1220}
+[data-tema=malam],[data-tema=senja]{--hdr:var(--surface2);--hdr-fg:var(--fg);--hdr-mute:var(--muted);--hdr-line:var(--line)}
+[data-tema=kontras]{--hdr:#000;--hdr-fg:#fff;--hdr-mute:#e6e6e6;--hdr-line:#fff}
+:root{--r:16px;--rs:12px;--lift:0 1px 2px rgba(15,31,26,.05),0 10px 24px -14px rgba(15,31,26,.28)}
+[data-tema=malam],[data-tema=senja],[data-tema=kontras]{--lift:none}
+body{background:var(--bg)}
+/* header */
+.top{position:sticky;top:0;z-index:7;margin:0 -16px;padding:14px 16px 12px;background:var(--hdr);color:var(--hdr-fg);border-bottom:0;border-radius:0 0 20px 20px;box-shadow:0 10px 24px -16px rgba(0,0,0,.5);align-items:center}
+.top h1{color:var(--hdr-fg);font-size:1.3rem;letter-spacing:-.02em}
+.top .sub{color:var(--hdr-mute);font-size:.78rem;margin-top:2px}
+.top .sub .dot{background:var(--hdr-mute)}.top .sub.ok .dot{background:#4ADE9B}.top .sub.wait .dot{background:#F5B94A}.top .sub.err .dot{background:#FF8A80}
+.top .muted{color:var(--hdr-mute)}
+.top .btn{background:transparent;color:var(--hdr-fg);border-color:var(--hdr-line)}
+.top .btn.armed{background:var(--bad);border-color:var(--bad);color:#fff}
+.top .mon button{background:transparent;color:var(--hdr-fg);border-color:var(--hdr-line)}
+.top .mon strong{color:var(--hdr-fg)}
+main{padding-top:18px}
+/* kartu */
+.card{border-radius:var(--r);box-shadow:var(--lift);padding:18px}
+.card>h2,.card .row.sb>h2{font-size:1.08rem;letter-spacing:-.01em}
+h3{text-transform:none;letter-spacing:0;font-size:.98rem;font-weight:700;color:var(--fg)}
+.box{border-radius:14px;background:var(--surface2)}
+.box>h3{display:flex;align-items:center;gap:8px}
+.box>h3::before{content:"";width:4px;height:1em;border-radius:2px;background:var(--accent);flex:none}
+/* label & input */
+label.f{text-transform:none;letter-spacing:0;font-size:.84rem;font-weight:600;color:var(--muted)}
+input,select,textarea{border-radius:var(--rs);padding:.72rem .8rem;background:var(--surface);transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);outline:0}
+.moneyin{border-radius:var(--rs);background:var(--surface)}
+.moneyin>input{padding-top:.72rem;padding-bottom:.72rem}
+/* tombol */
+.btn{border-radius:var(--rs);padding:.7rem 1rem;min-height:44px;transition:transform .08s,border-color .15s,background .15s}
+.btn.sm{min-height:38px;padding:.45rem .8rem}
+.btn:active{transform:scale(.97)}
+.btn.pri{box-shadow:0 6px 14px -8px var(--accent)}
+.seg{border-radius:var(--rs);padding:3px;gap:3px;background:var(--surface2)}
+.seg button{border:0;border-radius:9px;background:transparent;padding:.65rem .4rem;min-height:44px}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--accent-fg);box-shadow:0 4px 10px -6px var(--accent)}
+.chip{border-radius:999px;min-height:40px;padding:.45rem .9rem;background:var(--surface);display:inline-flex;align-items:center;gap:6px}
+.chip[aria-pressed=true]::before{content:"✓";font-weight:800}
+.chip:active{transform:scale(.97)}
+/* form bernomor: langkah penerimaan unit */
+.formcard{counter-reset:st}
+.formcard .sect{counter-increment:st;display:flex;align-items:center;gap:10px;margin-top:10px;padding:14px 0 8px;border-bottom:var(--bw) solid var(--line);font-size:1.02rem;font-weight:800;text-transform:none;letter-spacing:-.01em;color:var(--fg)}
+.formcard .sect::before{content:counter(st);display:grid;place-items:center;flex:none;width:1.7rem;height:1.7rem;border-radius:50%;background:var(--accent);color:var(--accent-fg);font-size:.85rem;font-weight:800}
+.formcard .sect:first-of-type{margin-top:0;padding-top:4px}
+.savebar{position:sticky;bottom:calc(68px + env(safe-area-inset-bottom,0px));z-index:4;display:grid;gap:6px}
+.savebar .btn.pri{width:100%;min-height:54px;font-size:1.05rem;border-radius:14px;box-shadow:0 14px 28px -12px var(--accent)}
+.sect{font-size:.95rem;text-transform:none;letter-spacing:0;color:var(--fg);font-weight:800}
+/* item */
+.item{border-radius:14px;background:var(--surface2)}
+.tag{border-radius:999px;text-transform:none;font-size:.78rem;padding:3px 10px}
+/* badge status */
+.badge{border-radius:999px;padding:3px 11px;display:inline-flex;align-items:center;gap:6px}
+.badge::before{content:"";width:.5em;height:.5em;border-radius:50%;background:currentColor;opacity:.85}
+/* daftar nota: tiket dengan garis status */
+.tx{border:var(--bw) solid var(--line);border-left:6px solid var(--line);border-radius:14px;background:var(--surface);padding:12px 12px 12px 14px;margin:0 0 10px;box-shadow:var(--lift)}
+.tx:first-child{padding-top:12px}.tx:last-child{margin-bottom:0}
+.tx.st-diterima{border-left-color:#8A96A3}.tx.st-dikerjakan{border-left-color:#2F7DE1}.tx.st-menunggu-konfirmasi{border-left-color:#E0A21B}
+.tx.st-selesai{border-left-color:#17A36B}.tx.st-diambil{border-left-color:var(--accent)}.tx.st-dibatalkan{border-left-color:var(--bad)}
+.tx-title strong.num{font-size:1.02rem}
+/* statistik & buku besar */
+.stat{border-radius:14px;background:var(--surface2);padding:12px 4px}
+.stat b{font-size:1.7rem}
+.ledger .ln{padding:9px 0}
+.big{letter-spacing:-.03em}
+/* nav bawah */
+.tabs{background:var(--surface);border-top:0;box-shadow:0 -10px 30px -18px rgba(15,31,26,.45);border-radius:20px 20px 0 0;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px))}
+.tab{display:grid;justify-items:center;gap:3px;padding:7px 2px 6px;border:0;border-radius:14px;font-size:.72rem;font-weight:600;line-height:1.1;transition:background .15s,color .15s}
+.tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.tab[aria-current=page]{background:var(--accent-soft);color:var(--accent);border-top-color:transparent}
+.t7 .tab{font-size:.66rem}
+.tab span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#toast{border-radius:14px;bottom:calc(88px + env(safe-area-inset-bottom,0px));box-shadow:0 12px 28px -12px rgba(0,0,0,.5)}
+.empty{border:var(--bw) dashed var(--line);border-radius:var(--r);padding:34px 14px}
+.sigbox{border-radius:var(--rs)}.sigcanvas{border-radius:10px}
+.thm{border-radius:14px}
+a.btn{display:inline-flex;align-items:center}
+@media (min-width:880px){.top{margin:0 auto;max-width:880px;border-radius:0 0 22px 22px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media print{.tabs,.top,.savebar{display:none!important}}
+.t8 .tabs-in{overflow-x:auto;scrollbar-width:none}.t8 .tab{flex:1 0 auto;min-width:62px}
 </style>
 </head>
 <body>
@@ -301,7 +385,7 @@ function rebuild(){
  if(!cfg.staff||!cfg.staff.length)cfg.staff=defaultCfg().staff;
  cfg.staff.forEach(function(s){
   if(s.role==='admin'){s.share=0;s.fee=0;s.base=+s.base||0;}
-  else{s.base=0;if(s.share==null||isNaN(+s.share))s.share=s.role==='expert'?40:30;if(s.fee==null||isNaN(+s.fee))s.fee=2;}
+  else{s.base=+s.base||0;if(s.pay!=='gaji'&&s.pay!=='campur')s.pay='bagi';if(s.pay==='gaji'){s.share=0;s.fee=0;}else{if(s.share==null||isNaN(+s.share))s.share=s.role==='expert'?40:30;if(s.fee==null||isNaN(+s.fee))s.fee=2;}}
  });}
 /* Hanya Admin yang boleh mengubah data. Akun Teknisi hanya melihat (server juga menolak tulis dari teknisi). */
 function put(coll,o){if(!isAdmin()&&!(isFront()&&coll==='tx'))return;o.updated=Date.now();var k=coll+'/'+o.id;DOCS[k]=o;persist(k);mark(k);rebuild();pubPool();rkSchedule();}
@@ -385,12 +469,13 @@ function rowFor(k,o){
  if(coll==='abs'){var sa=staff(o.staffId);return base.concat([o.date,sa?sa.name:o.staffId,ABSL[o.status]||o.status,cell(o['in']||''),cell(o.out||''),+o.late||0,cell(o.note||''),o.by==='self'?'Absen sendiri':'Owner',js]);}
  return base.concat(['Pengaturan toko',js]);}
 function post(url,body){
+ body.dev=devId();body.devName=devName();body.ua=String(navigator.userAgent||'').slice(0,120);
  var ctl=new AbortController(),tm=setTimeout(function(){ctl.abort();},45000);
  return fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body),redirect:'follow',signal:ctl.signal})
-  .then(function(r){clearTimeout(tm);return r.json();}).catch(function(e){clearTimeout(tm);throw e;});}
+  .then(function(r){clearTimeout(tm);return r.json();}).then(function(j){if(j&&j.error==='auth'&&j.reason==='device')DEVLOST=1;return j;}).catch(function(e){clearTimeout(tm);throw e;});}
 function api(body){body.session=AUTH&&AUTH.session||'';return post(SYNC.url,body);}
 function pendingCount(){return Object.keys(SYNC.pending).length;}
-function errMsg(c){return({login:'Username atau sandi salah.',locked:'Terlalu banyak percobaan salah. Coba lagi 10 menit lagi.',setup:'Sandi admin awal belum diisi di Code.gs (ADMIN_PASSWORD_AWAL).',token:'Skrip Google di server masih versi lama. Tempel Code.gs terbaru lalu Deploy versi baru.',action:'Skrip Google di server belum versi terbaru. Tempel Code.gs terbaru lalu Deploy versi baru.',forbidden:'Akun ini tidak punya izin untuk tindakan tersebut.',auth:'Sesi berakhir. Silakan masuk lagi.',username:'Username 3–20 karakter: huruf kecil, angka, titik, strip.',staff:'Pilih karyawan untuk akun teknisi.',pendek:'Sandi minimal 6 karakter.',self:'Tidak bisa mengubah peran/menonaktifkan akun Anda sendiri.',lastadmin:'Harus tersisa minimal satu admin aktif.',notfound:'Akun tidak ditemukan.',format:'Permintaan tidak dikenali.'})[c]||('Kendala: '+c);}
+function errMsg(c){return({login:'Username atau sandi salah.',locked:'Terlalu banyak percobaan salah. Coba lagi 10 menit lagi.',setup:'Sandi admin awal belum diisi di Code.gs (ADMIN_PASSWORD_AWAL).',token:'Skrip Google di server masih versi lama. Tempel Code.gs terbaru lalu Deploy versi baru.',action:'Skrip Google di server belum versi terbaru. Tempel Code.gs terbaru lalu Deploy versi baru.',forbidden:'Akun ini tidak punya izin untuk tindakan tersebut.',auth:'Sesi berakhir. Silakan masuk lagi.',device_pending:'Perangkat ini belum disetujui Owner. Berikan Kode Perangkat di bawah kepada Owner, lalu coba masuk lagi setelah disetujui.',device_blocked:'Perangkat ini diblokir Owner. Hubungi Owner.',device_mismatch:'Perangkat ini terdaftar untuk akun/peran lain. Gunakan akun yang sesuai atau minta Owner mengubah ikatan perangkat.',device_invalid:'ID perangkat tidak terbaca. Muat ulang aplikasi lalu coba lagi.',device_owner:'Akun Owner terkunci ke perangkat terdaftar. Masuk dari perangkat Owner, atau jalankan bukaKunciPerangkatOwner di Apps Script.',device_full:'Daftar perangkat penuh. Owner perlu menghapus perangkat lama.',bind:'Pilih ikatan yang valid (akun aktif non-Owner, semua teknisi, atau semua admin depan).',username:'Username 3–20 karakter: huruf kecil, angka, titik, strip.',staff:'Pilih karyawan untuk akun teknisi.',pendek:'Sandi minimal 6 karakter.',self:'Tidak bisa mengubah peran/menonaktifkan akun Anda sendiri.',lastadmin:'Harus tersisa minimal satu admin aktif.',notfound:'Akun tidak ditemukan.',format:'Permintaan tidak dikenali.'})[c]||('Kendala: '+c);}
 function syncLabel(){
  if(!hasServer())return{c:'',t:AUTH&&AUTH.local?'Mode lokal · belum terhubung ke Google Sheets':'Belum terhubung ke Google Sheets'};
  var n=pendingCount();
@@ -476,7 +561,7 @@ function monthStats(m){
     b2.net-=r.net;b2.bh-=r.bh;b2.feeAmt-=r.feeAmt;b2.tech-=r.tech;b2.shop-=r.shop;b2.refund=(b2.refund||0)+1;}
    else a.claimCost+=+c.cost||0;}});});
  E.forEach(function(e){a.exp+=+e.amount||0;a.byCat[e.cat]=(a.byCat[e.cat]||0)+(+e.amount||0);});
- a.base=admins().reduce(function(x,s){return x+(+s.base||0);},0);
+ a.base=cfg.staff.reduce(function(x,s){return x+baseOf(s);},0);
  a.adminUnit=(F.length-a.refundN)*(+cfg.adminUnitFee||0);
  a.adminOmzet=a.net*num(cfg.adminOmzetRate)/100;
  a.adminBonus=a.adminUnit+a.adminOmzet;
@@ -543,7 +628,7 @@ function sigImg(src){if(!src)return null;var im=SIGC[src];
 function preSig(t){return new Promise(function(res){
  if(!t.signature)return res();var im=SIGC[t.signature];if(im&&im.complete&&im.naturalWidth)return res();
  im=new Image();im.onload=im.onerror=function(){SIGC[t.signature]=im;res();};im.src=t.signature;});}
-function drawNota(t){
+function drawNota0(t){
  var W=(+PREFS.paper===48)?576:384,M=Math.round(W*0.04)+2,CW=W-2*M,H=4200,K=W>400?1.15:1;
  var cv=document.createElement('canvas');cv.width=W;cv.height=H;var x=cv.getContext('2d');
  x.fillStyle='#fff';x.fillRect(0,0,W,H);x.fillStyle='#000';x.strokeStyle='#000';x.textBaseline='top';
@@ -585,7 +670,7 @@ function drawNota(t){
  var tl=trkLink(t);
  if(tl){var qm=qrMatrix(tl);if(qm){var qn=qm.length,qq=2,qs=Math.max(2,Math.floor(Math.min(CW*0.66,210)/(qn+qq*2))),qz=(qn+qq*2)*qs,qx=Math.round((W-qz)/2);
   y+=4;sec('PANTAU STATUS UNIT');x.fillStyle='#fff';x.fillRect(qx,y,qz,qz);x.fillStyle='#000';
-  for(var qr=0;qr<qn;qr++)for(var qc=0;qc<qn;qc++)if(qm[qr][qc])x.fillRect(qx+(qc+qq)*qs,y+(qr+qq)*qs,qs,qs);
+  QRPOS={qm:qm,qx:qx,y:y,qs:qs,qq:qq,qn:qn};
   y+=qz+4;cen('Scan untuk melihat status unit Anda','500',12,SANS,16);y+=6;}}
  y+=2;cen('Terima kasih atas kepercayaan Anda','700',15,SANS,20);
  cen('Mohon simpan nota ini dan bawa saat pengambilan unit.','400',12,SANS,16);y+=4;cen('* * * * *','700',14,MONO,18);
@@ -665,25 +750,25 @@ function waOwner(t,cl){
 
 function refundBanner(){var L=refundDue();if(!L.length)return'';
  return'<section class="card stack" style="border-color:var(--bad)"><strong>⚠ '+L.length+' refund garansi menunggu dikembalikan ke pelanggan</strong>'+L.map(function(x){return'<span class="small">'+esc(x.t.no)+' · '+esc(x.t.customer||'-')+' · '+esc(x.t.device)+' · '+rp(calc(x.t).total)+'</span>';}).join('')+'<span class="small muted">Buka nota di tab Nota, lalu tekan "Tandai uang sudah dikembalikan" setelah uang diserahkan.</span></section>';}
-var ADMIN_TABS=['kasir','riwayat','stok','gaji','biaya','laporan','atur'],TECH_TABS=['t-ringkas','t-kerja','t-absen','t-kasbon','t-sop','t-tertib'],FRONT_TABS=['kasir','riwayat','stok','absen','f-sop','atur'];
+var ADMIN_TABS=['kasir','riwayat','stok','absen','gaji','biaya','laporan','atur'],TECH_TABS=['t-ringkas','t-kerja','t-absen','t-kasbon','t-sop','t-tertib'],FRONT_TABS=['kasir','riwayat','stok','absen','f-sop','atur'];
 function view(){
- var f={kasir:vKasir,riwayat:vNota,gaji:vGaji,biaya:vBiaya,laporan:vLaporan,atur:vAtur,'t-ringkas':vTekHome,'t-kerja':vTekKerja,'t-kasbon':vTekKasbon,'t-sop':vTekSop,'t-tertib':vTertib,'f-sop':vFrontSop,stok:vStokTab,absen:vAbsen,'t-absen':vAbsen}[tab];
+ var f={kasir:vKasir,riwayat:vNota,gaji:vGaji,biaya:vBiaya,laporan:vLaporan,atur:vAtur,'t-ringkas':vTekHome,'t-kerja':vTekKerja,'t-kasbon':vTekKasbon,'t-sop':vTekSop,'t-tertib':vTertib,'f-sop':vFrontSop,stok:vStokTab,absen:(isAdmin()?vAbsenOwner:vAbsen),'t-absen':vAbsen}[tab];
  /* Pengaman: teknisi tidak pernah bisa membuka halaman admin, walau variabel tab diubah dari luar. */
  if(isTech()&&TECH_TABS.indexOf(tab)<0){tab='t-ringkas';f=vTekHome;}
  if(isAdmin()&&ADMIN_TABS.indexOf(tab)<0){tab='kasir';f=vKasir;}
  if(isFront()&&FRONT_TABS.indexOf(tab)<0){tab='kasir';f=vKasir;}
  if(isFront()&&tab==='atur'&&['tampilan','printer'].indexOf(aturTab)<0)aturTab='printer';
- try{return annBanner()+((tab==='kasir'||tab==='riwayat')?refundBanner()+idleBanner()+lowBanner():'')+(tab==='riwayat'&&canWrite()?teamCard():'')+((tab==='riwayat'&&isFront())?tgtCard():'')+f();}catch(e){return'<section class="card stack"><strong>Halaman gagal dimuat</strong><span class="small muted">'+esc(e&&e.message)+'</span><div><button class="btn sm" data-act="tab" data-v="'+(isTech()?'t-ringkas':'kasir')+'">Kembali</button></div></section>';}}
+ try{return annBanner()+devBanner()+((tab==='kasir'||tab==='riwayat')?refundBanner()+idleBanner()+lowBanner():'')+(tab==='riwayat'&&canWrite()?teamCard():'')+((tab==='riwayat'&&isFront())?tgtCard():'')+f();}catch(e){return'<section class="card stack"><strong>Halaman gagal dimuat</strong><span class="small muted">'+esc(e&&e.message)+'</span><div><button class="btn sm" data-act="tab" data-v="'+(isTech()?'t-ringkas':'kasir')+'">Kembali</button></div></section>';}}
 function whoBar(){
  if(AUTH.local)return'<span class="small muted">Mode lokal</span>';
  return'<span class="row" style="gap:6px;flex-wrap:nowrap"><span class="small muted" style="text-align:right;line-height:1.2">'+esc(AUTH.name||AUTH.user)+(String(AUTH.name||'').toLowerCase()===roleName().toLowerCase()?'':'<br>'+roleName())+'</span><button class="btn sm'+(logoutArmed?' armed':'')+'" data-act="logout">'+(logoutArmed?'Yakin keluar?':'Keluar')+'</button></span>';}
 function shell(){
- var tabs=isTech()?[['t-ringkas','Ringkasan'],['t-kerja','Pekerjaan'],['t-absen','Absen'],['t-kasbon','Kasbon'],['t-sop','SOP'],['t-tertib','Tertib']]:isFront()?[['kasir','Input Data'],['riwayat','Nota'],['stok','Stok'],['absen','Absen'],['f-sop','SOP'],['atur','Printer']]:[['kasir','Input'],['riwayat','Nota'],['stok','Stok'],['gaji','Gaji'],['biaya','Biaya'],['laporan','Laporan'],['atur','Atur']];
+ var tabs=isTech()?[['t-ringkas','Ringkasan'],['t-kerja','Pekerjaan'],['t-absen','Absen'],['t-kasbon','Kasbon'],['t-sop','SOP'],['t-tertib','Tertib']]:isFront()?[['kasir','Input Data'],['riwayat','Nota'],['stok','Stok'],['absen','Absen'],['f-sop','SOP'],['atur','Printer']]:[['kasir','Input'],['riwayat','Nota'],['stok','Stok'],['absen','Absen'],['gaji','Gaji'],['biaya','Biaya'],['laporan','Laporan'],['atur','Atur']];
  var showMon=['gaji','biaya','laporan','t-ringkas','t-kerja','t-kasbon'].indexOf(tab)>=0||(tab==='riwayat'&&(flt==='bulan'||flt==='batal')),sl=syncLabel();
  return'<div class="wrap"><header class="top"><div><h1>'+esc(cfg.shop)+'</h1><button class="sub '+sl.c+'" data-act="'+((isTech()||isFront())?'sy-now':'go-sheets')+'"><span class="dot"></span>'+esc(sl.t)+'</button></div>'+whoBar()+
   (showMon?'<div class="mon" style="flex-basis:100%;justify-content:center"><button data-act="mon" data-v="-1" aria-label="Bulan sebelumnya">‹</button><strong>'+mlabel(month)+'</strong><button data-act="mon" data-v="1" aria-label="Bulan berikutnya">›</button></div>':'')+
-  '</header><main>'+view()+'</main></div><nav class="tabs'+(tabs.length>=7?' t7':'')+'"><div class="wrap tabs-in">'+
-  tabs.map(function(t){return'<button class="tab" data-act="tab" data-v="'+t[0]+'"'+(tab===t[0]?' aria-current="page"':'')+'>'+t[1]+'</button>';}).join('')+'</div></nav>'+picOverlay();}
+  '</header><main>'+view()+'</main></div><nav class="tabs'+(tabs.length>=8?' t7 t8':(tabs.length>=7?' t7':''))+'"><div class="wrap tabs-in">'+
+  tabs.map(function(t){return'<button class="tab" data-act="tab" data-v="'+t[0]+'"'+(tab===t[0]?' aria-current="page"':'')+'>'+tabIco(t[0])+'<span>'+t[1]+'</span></button>';}).join('')+'</div></nav>'+picOverlay();}
 function loginHTML(){
  var hasUrl=!loginD.editUrl&&!!SYNC.url;
  return'<div class="wrap" style="min-height:100vh;display:grid;align-content:center;gap:16px;padding:24px 0"><div style="text-align:center"><h1>'+esc(cfg.shop||DEF_SHOP)+'</h1><span class="muted small">Kasir Servis Pro · silakan masuk</span></div>'+
@@ -692,6 +777,7 @@ function loginHTML(){
  '<label class="f">Username<input id="lg-user" data-lg="user" value="'+esc(loginD.user)+'" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="cth. admin / teknisi1"></label>'+
  '<label class="f">Sandi<input id="lg-pass" data-lg="pass" type="'+(loginD.show?'text':'password')+'" value="'+esc(loginD.pass)+'" autocomplete="current-password"></label>'+
  '<label class="row small" style="cursor:pointer"><input type="checkbox" data-lg-show="1"'+(loginD.show?' checked':'')+'> Tampilkan sandi</label>'+
+'<div class="box"><div class="row sb"><span class="small muted">Kode perangkat ini</span><strong class="num">'+devCode()+'</strong></div>'+(hasUrl?'':'')+'<label class="f">Nama perangkat (agar Owner mengenali)<input data-lg="devname" value="'+esc(loginD.devname!=null?loginD.devname:devName())+'" maxlength="40" autocomplete="off"></label></div>'+
  (loginD.err?'<div class="badge bad" role="alert" style="white-space:normal">'+esc(loginD.err)+'</div>':'')+
  '<button type="button" class="btn pri" style="padding:.8rem" data-act="login"'+(loginD.busy?' disabled':'')+'>'+(loginD.busy?'Memeriksa…':'Masuk')+'</button>'+
  (hasUrl?'<div class="small muted" style="text-align:center">Server: tersimpan di perangkat ini. <button type="button" class="linkbtn" data-act="login-url">Ganti</button></div>':'')+
@@ -744,8 +830,8 @@ function vKasir(){
   '<div class="row"><a class="btn sm pri" href="'+waLink(lastSaved,msgText(lastSaved,'terima'))+'" target="_blank" rel="noopener">Kirim bukti terima (WhatsApp)</a></div>'+
   '<span class="muted small">'+((lastSaved.items||[]).length?'Pembayaran, garansi, dan status diatur di menu Nota › buka nota ini.':'Unit diserahkan ke teknisi pemeriksa. Setelah dicek, isi Hasil cek di menu Nota › buka nota ini.')+'</span></section>';}
  var cl=custList();
- h+=setupCard();
- h+='<section class="card stack"><div class="row sb"><h2>Nota baru</h2><span class="num muted small">'+esc(nextNo(iso(new Date())))+'</span></div>'+
+ h+=setupCard()+frontTodo();
+ h+='<section class="card stack formcard"><div class="row sb"><h2>Nota baru</h2><span class="num muted small">'+esc(nextNo(iso(new Date())))+'</span></div>'+
  modeToggle()+'<div class="sect">Pelanggan</div><div class="grid">'+
  '<label class="f">Nama pelanggan<input id="d-customer" list="cust-list" data-d="customer" value="'+esc(draft.customer)+'" placeholder="Ketik untuk mencari pelanggan lama" autocomplete="off"></label>'+
  '<label class="f">No. HP / WhatsApp<input id="d-phone" type="tel" inputmode="tel" data-d="phone" value="'+esc(draft.phone)+'" placeholder="08xxxxxxxxxx" autocomplete="off"></label></div>'+
@@ -758,7 +844,7 @@ function vKasir(){
  '<div class="grid">'+lockBtns()+
  (draft.lockType==='pass'?'<label class="f">Sandi / PIN (internal)<input id="d-lockpass" data-d="lockPass" value="'+esc(draft.lockPass)+'" autocomplete="off"></label>':'')+'</div>'+
  (draft.lockType==='pattern'?'<div class="stack"><span class="muted small">Ketuk titik sesuai urutan pola (hanya internal).</span><div class="pat">'+[1,2,3,4,5,6,7,8,9].map(function(n){var k=draft.lockPat.indexOf(n);return'<button data-act="pat" data-v="'+n+'" aria-pressed="'+(k>=0)+'">'+(k>=0?(k+1):'•')+'</button>';}).join('')+'</div><div class="row"><span class="small">Urutan: <b class="num">'+(draft.lockPat.length?draft.lockPat.join(' → '):'belum diisi')+'</b></span><button class="linkbtn" data-act="pat-clear">Ulangi pola</button></div></div>':'')+
- fmForm('')+'<div class="sect">'+(draft.mode==='cek'?'Pemeriksaan':'Pengerjaan')+'</div><label class="f">'+(draft.mode==='cek'?'Teknisi pemeriksa':'Teknisi')+'<select id="d-tech" data-d="techId">'+T.map(function(s){return'<option value="'+s.id+'"'+(s.id===draft.techId?' selected':'')+'>'+esc(slabel(s))+' · bagi hasil '+pct(s.share)+' + fee '+pct(s.fee)+'</option>';}).join('')+'</select></label>'+
+ fmForm('')+'<div class="sect">'+(draft.mode==='cek'?'Pemeriksaan':'Pengerjaan')+'</div><label class="f">'+(draft.mode==='cek'?'Teknisi pemeriksa':'Teknisi')+'<select id="d-tech" data-d="techId">'+T.map(function(s){return'<option value="'+s.id+'"'+(s.id===draft.techId?' selected':'')+'>'+esc(slabel(s))+(isFront()?'':' · '+(s.pay==='gaji'?'gaji pokok':'bagi hasil '+pct(s.share)+' + fee '+pct(s.fee)))+'</option>';}).join('')+'</select></label>'+
  (draft.mode==='cek'?cekInfo():'')+(draft.mode==='cek'?[]:draft.items).map(function(it,i){var p=it.type==='part';
   return'<div class="item"><div class="item-h"><span class="tag '+it.type+'">'+(p?'Tindakan / sparepart':'Jasa')+'</span><button class="linkbtn" data-act="rm-item" data-i="'+i+'">Hapus baris</button></div><div class="item-g">'+
   '<label class="f f-name">Nama<input id="it-'+i+'-name" data-i="'+i+'" data-k="name" value="'+esc(it.name)+'" placeholder="'+(p?'cth. Ganti LCD Oppo A5s':'cth. Ganti LCD')+'" autocomplete="off"></label>'+
@@ -769,7 +855,7 @@ function vKasir(){
  draftPhotos()+'<div class="sect">Tanda tangan pelanggan</div><div class="sigbox"><div class="small muted">Pelanggan menggores tanda tangan di kotak ini (bukti persetujuan biaya, risiko data, dan SOP).</div>'+
  '<canvas id="sig-canvas" class="sigcanvas"></canvas><div><button class="linkbtn" data-act="sig-clear">Hapus tanda tangan</button></div></div></section>'+
  '<section class="card" id="sum">'+sumHTML()+'</section>'+
- '<button class="btn pri" style="width:100%;padding:.85rem;font-size:1.05rem" data-act="save-tx">💾 Simpan nota'+(PREFS.autoPrint?' dan cetak':'')+'</button>'+
+ '<div class="savebar"><button class="btn pri" data-act="save-tx">💾 Simpan nota'+(PREFS.autoPrint?' dan cetak':'')+'</button></div>'+
  '<span class="muted small" style="text-align:center;display:block">Pembayaran &amp; garansi diatur di menu Nota setelah nota tersimpan.</span>';
  return h;}
 
@@ -908,20 +994,20 @@ function vNota(){
  var total=0;L.forEach(function(t){if(isActive(t))total+=calc(t).total;});
  h+='<section class="card"><div class="row sb" style="margin-bottom:12px"><h2>'+L.length+' nota</h2><span class="num">'+rp(total)+'</span></div>'+
  L.map(function(t){var c=calc(t),o2=openTx===t.id;
-  return'<div class="tx'+(isActive(t)?'':' cancelled')+'"><button class="tx-h" data-act="toggle-tx" data-v="'+t.id+'" aria-expanded="'+o2+'"><span class="tx-title"><strong class="num">'+esc(t.no)+'</strong> <span class="muted small">'+fdate(t.date)+' · '+esc(t.pay)+'</span><br>'+esc(t.customer||'Tanpa nama')+(t.device?' <span class="muted">· '+esc(t.device)+'</span>':'')+(t.complaint?'<br><span class="muted small">'+esc(t.complaint)+'</span>':'')+'<br><span class="muted small">Teknisi '+esc(techName(t.techId))+'</span></span><span class="num"><strong>'+rp(c.total)+'</strong></span></button><div class="row">'+statusBadge(t)+refBadge(t)+warrBadge(t)+(flt==='hari'?dayTags(t,day):'')+'</div>'+(o2?detail(t):'')+'</div>';}).join('')+'</section>';
+  return'<div class="tx'+(isActive(t)?'':' cancelled')+stCls(t)+'"><button class="tx-h" data-act="toggle-tx" data-v="'+t.id+'" aria-expanded="'+o2+'"><span class="tx-title"><strong class="num">'+esc(t.no)+'</strong> <span class="muted small">'+fdate(t.date)+' · '+esc(t.pay)+'</span><br>'+esc(t.customer||'Tanpa nama')+(t.device?' <span class="muted">· '+esc(t.device)+'</span>':'')+(t.complaint?'<br><span class="muted small">'+esc(t.complaint)+'</span>':'')+'<br><span class="muted small">Teknisi '+esc(techName(t.techId))+'</span></span><span class="num"><strong>'+rp(c.total)+'</strong></span></button><div class="row">'+statusBadge(t)+refBadge(t)+warrBadge(t)+(flt==='hari'?dayTags(t,day):'')+'</div>'+(o2?detail(t):'')+'</div>';}).join('')+'</section>';
  return h;}
 
 function rajinRow(s,st){var k=month+'|'+s.id,on=!!(cfg.rajinCheck&&cfg.rajinCheck[k]);
  return{on:on,val:on?st.rajinPool:0,html:'<div class="ln"><span><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" data-act="toggle-rajin" data-v="'+s.id+'"'+(on?' checked':'')+'> <b>Bonus Rajin ('+pct(cfg.rajinRate)+' sisa toko)</b></label><span class="small muted">Syarat: full hadir, maks 2 telat, zero rework, nota rapi.</span><br>'+eligLine(rajinElig(s.id,month))+'</span><span class="num '+(on?'pos':'muted')+'">'+(on?'+ '+rp(st.rajinPool):'Rp 0')+'</span></div>'};}
 function vGaji(){
  var st=monthStats(month);
- var h='<section class="card"><h2>Gaji &amp; bagi hasil '+mlabel(month)+'</h2><p class="muted small" style="margin:6px 0 0"><b>Admin</b>: gaji pokok + bonus. <b>Teknisi</b>: tanpa gaji pokok, menerima bagi hasil + fee per unit dari nota yang sudah <b>diambil</b> pelanggan di bulan ini (status Selesai belum dihitung).</p></section>';
+ var h='<section class="card"><h2>Gaji &amp; bagi hasil '+mlabel(month)+'</h2><p class="muted small" style="margin:6px 0 0"><b>Admin</b>: gaji pokok + bonus. <b>Teknisi</b>: bagi hasil + fee per unit dari nota yang sudah <b>diambil</b> pelanggan di bulan ini (status Selesai belum dihitung), ditambah gaji pokok bila dipilih di Atur › Toko &amp; tarif.</p></section>';
  cfg.staff.forEach(function(s){
   var adm=s.role==='admin',b=st.byTech[s.id]||{selesai:0,net:0,bh:0,feeAmt:0,tech:0},r=rajinRow(s,st),k=month+'|'+s.id,paid=cfg.paid&&cfg.paid[k];
-  var tot=adm?(+s.base||0)+st.adminBonus+r.val:b.tech+r.val;
+  var tot=adm?(+s.base||0)+st.adminBonus+r.val:baseOf(s)+b.tech+r.val;
   h+='<section class="card"><div class="row sb"><div><h2>'+esc(s.name)+'</h2><span class="muted small">'+ROLE[s.role]+' · '+(adm?st.nSelesai+' unit diambil (toko)':b.selesai+' unit diambil')+'</span></div><span class="badge '+(paid?'good':'warn')+'">'+(paid?'Dibayar '+fdate(paid):'Belum dibayar')+'</span></div><div class="ledger" style="margin-top:10px">'+
   (adm?'<div class="ln"><span>Gaji pokok</span><span class="num">'+rp(s.base)+'</span></div><div class="ln"><span>Bonus unit ('+st.nSelesai+' × '+rp(cfg.adminUnitFee)+')</span><span class="num">'+rp(st.adminUnit)+'</span></div><div class="ln"><span>Bonus omzet ('+pct(cfg.adminOmzetRate)+' × laba bersih '+rp(st.net)+')</span><span class="num">'+rp(st.adminOmzet)+'</span></div>'
-   :'<div class="ln"><span>Laba bersih unit dikerjakan</span><span class="num">'+rp(b.net)+'</span></div><div class="ln"><span>Bagi hasil ('+pct(s.share)+')</span><span class="num">'+rp(b.bh)+'</span></div><div class="ln"><span>Fee unit ('+pct(s.fee)+' dari bagian toko)</span><span class="num">'+rp(b.feeAmt)+'</span></div>')+
+   :(baseOf(s)>0?'<div class="ln"><span>Gaji pokok</span><span class="num">'+rp(baseOf(s))+'</span></div>':'')+'<div class="ln"><span>Laba bersih unit dikerjakan</span><span class="num">'+rp(b.net)+'</span></div><div class="ln"><span>Bagi hasil ('+pct(s.share)+')</span><span class="num">'+rp(b.bh)+'</span></div><div class="ln"><span>Fee unit ('+pct(s.fee)+' dari bagian toko)</span><span class="num">'+rp(b.feeAmt)+'</span></div>')+
   r.html+'<div class="ln tot"><span>Total diterima</span><span class="num">'+rp(tot)+'</span></div>'+(kasBal(s.id)||kasMonth(s.id,month)?'<div class="ln"><span>Potongan kasbon bulan ini</span><span class="num">− '+rp(kasMonth(s.id,month))+'</span></div><div class="ln tot"><span>Diterima bersih</span><span class="num">'+rp(tot-kasMonth(s.id,month))+'</span></div><div class="ln"><span>Sisa kasbon belum lunas</span><span class="num '+(kasBal(s.id)>0?'neg':'')+'">'+rp(kasBal(s.id))+'</span></div>':'')+'</div>'+
   '<div style="margin-top:12px"><button class="btn sm" data-act="paid" data-v="'+s.id+'">'+(paid?'Batalkan tanda dibayar':'Tandai sudah dibayar')+'</button></div></section>';});
  h+=absAdminCard()+kasHTML();
@@ -940,14 +1026,14 @@ function vTekRingkas(){
  var sid=AUTH.staffId,s=staff(sid)||{name:AUTH.name,share:0,fee:0},st=monthStats(month);
  var b=st.byTech[sid]||{masuk:0,proses:0,selesai:0,batal:0,net:0,bh:0,feeAmt:0,tech:0};
  var k=month+'|'+sid,on=!!(cfg.rajinCheck&&cfg.rajinCheck[k]),pool=+(cfg.rajinPool&&cfg.rajinPool[month])||0,rajin=on?pool:0;
- var paid=cfg.paid&&cfg.paid[k],tot=b.tech+rajin,pot=kasMonth(sid,month),bal=kasBal(sid);
+ var paid=cfg.paid&&cfg.paid[k],tot=baseOf(s)+b.tech+rajin,pot=kasMonth(sid,month),bal=kasBal(sid);
  var h='<section class="card"><h3>Diterima bulan '+mlabel(month)+'</h3><div class="big num '+((tot-pot)<0?'neg':'pos')+'" style="margin-top:6px">'+rp(tot-pot)+'</div>'+
   '<span class="muted small">'+(pot?'Sudah dipotong kasbon '+rp(pot)+' · ':'')+b.selesai+' unit diambil'+(st.byTech[sid]&&0?'':'')+'</span>'+
   '<div style="margin-top:8px"><span class="badge '+(paid?'good':'warn')+'">'+(paid?'Sudah dibayar '+fdate(paid):'Belum dibayar')+'</span></div></section>';
  h+='<section class="card stack"><h2>Pekerjaan saya</h2><div class="stats">'+stat('Masuk',b.masuk,'')+stat('Masih proses',b.proses,'warn')+stat('Diambil',b.selesai,'good')+stat('Batal',b.batal,'bad')+'</div>'+
   '<span class="small muted">Masuk &amp; proses dihitung dari tanggal masuk. Hasil baru dihitung saat unit diambil pelanggan.</span></section>';
  h+='<section class="card"><h2>Rincian penghasilan</h2><div class="ledger" style="margin-top:8px">'+
-  '<div class="ln"><span>Laba bersih unit diambil</span><span class="num">'+rp(b.net)+'</span></div>'+
+  (baseOf(s)>0?'<div class="ln"><span>Gaji pokok</span><span class="num">'+rp(baseOf(s))+'</span></div>':'')+'<div class="ln"><span>Laba bersih unit diambil</span><span class="num">'+rp(b.net)+'</span></div>'+
   '<div class="ln"><span>Bagi hasil ('+pct(s.share)+')</span><span class="num">'+rp(b.bh)+'</span></div>'+
   '<div class="ln"><span>Fee unit / bonus per unit ('+pct(s.fee)+')</span><span class="num">'+rp(b.feeAmt)+'</span></div>'+
   '<div class="ln tot"><span>Subtotal dari pekerjaan</span><span class="num">'+rp(b.tech)+'</span></div>'+
@@ -974,7 +1060,7 @@ function vTekKerja(){
  var tot=0;L.forEach(function(t){if(isActive(t)&&isPaid(t)&&inM(payDate(t),month))tot+=calc(t).tech;});
  h+='<section class="card"><div class="row sb" style="margin-bottom:10px"><h2>'+L.length+' nota</h2><span class="num small">Hasil diambil: <b class="pos">'+rp(tot)+'</b></span></div>'+
  L.map(function(t){var c=calc(t),o2=openTx===t.id,done=isActive(t)&&isPaid(t),wait=isActive(t)&&statusOf(t)==='Selesai';
-  return'<div class="tx'+(isActive(t)?'':' cancelled')+'"><button class="tx-h" data-act="tek-toggle" data-v="'+esc(t.id)+'" aria-expanded="'+o2+'"><span class="tx-title"><strong class="num">'+esc(t.no)+'</strong> <span class="muted small">'+fdate(t.date)+'</span><br>'+esc(t.device||'Perangkat')+(t.customer?' <span class="muted">· '+esc(t.customer)+'</span>':'')+(t.complaint?'<br><span class="muted small">'+esc(t.complaint)+'</span>':'')+'</span><span class="num"><strong class="'+(done?'pos':'muted')+'">'+(done?rp(c.tech):'—')+'</strong><br><span class="muted small">'+(done?'hasil Anda':(wait?'belum diambil · belum dihitung':'belum selesai'))+'</span></span></button><div class="row">'+statusBadge(t)+refBadge(t)+'</div>'+(o2?tekDetail(t):'')+'</div>';}).join('')+'</section>';
+  return'<div class="tx'+(isActive(t)?'':' cancelled')+stCls(t)+'"><button class="tx-h" data-act="tek-toggle" data-v="'+esc(t.id)+'" aria-expanded="'+o2+'"><span class="tx-title"><strong class="num">'+esc(t.no)+'</strong> <span class="muted small">'+fdate(t.date)+'</span><br>'+esc(t.device||'Perangkat')+(t.customer?' <span class="muted">· '+esc(t.customer)+'</span>':'')+(t.complaint?'<br><span class="muted small">'+esc(t.complaint)+'</span>':'')+'</span><span class="num"><strong class="'+(done?'pos':'muted')+'">'+(done?rp(c.tech):'—')+'</strong><br><span class="muted small">'+(done?'hasil Anda':(wait?'belum diambil · belum dihitung':'belum selesai'))+'</span></span></button><div class="row">'+statusBadge(t)+refBadge(t)+'</div>'+(o2?tekDetail(t):'')+'</div>';}).join('')+'</section>';
  return h;}
 
 /* ===== SOP wajib baca untuk teknisi ===== */
@@ -1044,7 +1130,7 @@ function tertibHTML(){var t=TT();
  '<h3>5. Tahapan sanksi</h3><ul><li><b>Tahap 1</b> telat melebihi batas atau meja berantakan: teguran lisan.</li><li><b>Tahap 2</b> berulang atau izin mendadak berulang: surat peringatan 1 dan bonus rajin hangus.</li><li><b>Tahap 3</b> pelanggaran lanjutan atau alpa: surat peringatan 2.</li><li><b>Tahap 4</b> membuka data pelanggan, mengambil uang di luar prosedur, menyembunyikan kerusakan: ganti kerugian, pemutusan kerja, dapat diproses hukum.</li></ul>'+
  '<div class="box" style="margin-top:12px"><strong>💪 Semangat, tim '+esc(cfg.shop)+'!</strong><span>“Setiap HP yang hidup kembali adalah satu hari pelanggan yang terselamatkan. Itu hasil tangan kalian.”</span><span class="small">Rapi hari ini berarti dipercaya besok. Salah itu manusiawi, menyembunyikan salah yang merugikan. Tim yang kompak lebih kuat dari teknisi paling jago sendirian. Penghasilan kita tumbuh saat toko tumbuh, dan toko tumbuh saat pelanggan puas. Terima kasih sudah bekerja jujur, rapi, dan sepenuh hati. 🚀</span></div></div>';}
 function vTertib(){return'<section class="card">'+tertibHTML()+'</section>';}
-function sopFront(){return'<div style="line-height:1.65"><h3>Tugas Admin depan</h3><ul><li>Terima unit: input data pelanggan, perangkat, IMEI/SN, keluhan, dan tanda tangan di tab Input Data. Pola/PIN hanya untuk uji perbaikan dan wajib dihapus setelah selesai.</li><li>Cek unit dan buat nota. Kirim WhatsApp ke pelanggan: bukti terima, persetujuan biaya, dan info unit selesai (tombol pesan di dalam nota).</li><li>Tunggu persetujuan (ACC) pelanggan. Setelah disetujui, serahkan unit ke Teknisi 1 atau Teknisi 2 dan ubah status menjadi Dikerjakan.</li><li>Unit selesai: hubungi pelanggan. Terima pembayaran, cetak nota, lalu ubah status menjadi <b>Diambil</b>.</li><li>Garansi: catat klaim dengan sopan dan jelas. Persetujuan klaim, refund, dan perubahan biaya nota yang sudah selesai ada di tangan Owner.</li></ul><h3>Batas akses</h3><ul><li>Admin tidak melihat gaji, kasbon, biaya toko, laporan keuangan, atau tarif bagi hasil, dan tidak mengubah pengaturan toko.</li><li>Membatalkan atau mengubah nota yang sudah selesai/diambil wajib PIN Owner. Hapus permanen hanya Owner.</li></ul></div>';}
+function sopFront(){return'<div style="line-height:1.65"><h3>Tugas Admin depan</h3><ul><li>Terima unit di tab Input Data: data pelanggan, perangkat, kelengkapan, kondisi fisik, foto, dan tanda tangan. Pilih <b>Cek dulu</b> bila kerusakan belum pasti (serahkan ke teknisi pemeriksa), atau <b>Harga sudah pasti</b> bila jelas.</li><li>Setelah teknisi mengecek, isi <b>Hasil cek teknisi</b> di nota, kirim ke pelanggan lewat WhatsApp, lalu catat tahap yang disetujui (atau hasil nego) sebagai biaya nota. Status menjadi Dikerjakan.</li><li>Unit selesai: hubungi pelanggan. Terima pembayaran, cetak nota, lalu ubah status menjadi <b>Diambil</b>.</li><li>Garansi: catat klaim dengan sopan dan jelas. Persetujuan klaim, refund, dan perubahan biaya nota yang sudah selesai ada di tangan Owner.</li></ul><h3>Batas akses</h3><ul><li>Admin tidak melihat gaji, kasbon, biaya toko, laporan keuangan, laba, atau tarif bagi hasil, tidak mengelola pengguna/perangkat, dan tidak mengubah pengaturan toko. Absen, stok (lihat saja), dan printer tetap boleh dipakai.</li><li>Membatalkan atau mengubah nota yang sudah selesai/diambil wajib PIN Owner. Hapus permanen hanya Owner.</li></ul></div>';}
 function vFrontSop(){return'<section class="card">'+sopFront()+'</section><section class="card">'+tertibHTML()+'</section>';}
 function sopTeknisi(){
  var me=isTech()?staff(AUTH.staffId):null,s=me||{share:0,fee:0},lv=s.role==='expert'?'Expert (Lv.3)':'Interface (Lv.2)';
@@ -1206,7 +1292,7 @@ function vLaporan(){
  h+='<section class="card stack"><h2>Aktivitas unit</h2><div class="stats">'+stat('Masuk',st.nMasuk,'')+stat('Masih proses',st.nProses,'warn')+stat('Diambil',st.nSelesai,'good')+stat('Belum diambil',st.nTunggu,'warn')+stat('Batal',st.nBatal,'bad')+'</div><span class="small muted">Masuk &amp; proses dari tanggal masuk; diambil dari tanggal diambil; batal dari tanggal batal.</span></section>';
  h+='<section class="card"><h2>Laba rugi</h2><div class="ledger" style="margin-top:8px">'+lnx('Penjualan jasa',st.jasa)+lnx('Penjualan sparepart',st.partRev)+lnx('Modal sparepart',st.partCost,'',true)+lnx('Laba bersih nota',st.net,'tot')+
   lnx('Bagi hasil teknisi',st.bh,'',true)+lnx('Fee unit teknisi',st.feeAmt,'',true)+lnx('Sisa toko (setelah teknisi)',st.shop,'tot')+
-  lnx('Gaji pokok admin',st.base,'',true)+lnx('Bonus admin',st.adminBonus,'',true)+lnx('Bonus rajin',st.totalRajinPaid,'',true)+lnx('Pengeluaran toko',st.exp,'',true)+lnx('Klaim garansi disetujui ('+st.claimN+')',st.claimCost,'',true)+lnx('Sisa bersih toko',st.netShop,'tot')+'</div></section>';
+  lnx('Gaji pokok',st.base,'',true)+lnx('Bonus admin',st.adminBonus,'',true)+lnx('Bonus rajin',st.totalRajinPaid,'',true)+lnx('Pengeluaran toko',st.exp,'',true)+lnx('Klaim garansi disetujui ('+st.claimN+')',st.claimCost,'',true)+lnx('Sisa bersih toko',st.netShop,'tot')+'</div></section>';
  var rows='',tm=0,tp=0,ts=0,tb=0,tn=0,tbh=0,tf=0,tt2=0;
  techs().forEach(function(s){var b=st.byTech[s.id]||{masuk:0,proses:0,selesai:0,batal:0,net:0,bh:0,feeAmt:0,tech:0};
   tm+=b.masuk;tp+=b.proses;ts+=b.selesai;tb+=b.batal;tn+=b.net;tbh+=b.bh;tf+=b.feeAmt;tt2+=b.tech;
@@ -1259,9 +1345,9 @@ function aturBody(){
    '<label class="f">Bonus omzet (% laba bersih)<input id="c-admomzet" type="number" step="0.1" min="0" data-c="adminOmzetRate" value="'+num(cfg.adminOmzetRate)+'"></label></div>'+
    '<span class="muted small">Isi 0 bila admin tidak diberi bonus.</span></section>';});
   techs().forEach(function(s){
-   h+='<section class="card stack"><h2>'+esc(ROLE[s.role])+' — bagi hasil (tanpa gaji pokok)</h2><div class="grid"><label class="f">Nama<input id="s-'+s.id+'-name" data-s="'+s.id+'" data-f="name" value="'+esc(s.name)+'" autocomplete="off"></label>'+
+   h+='<section class="card stack"><h2>'+esc(ROLE[s.role])+' — '+payLbl(s).toLowerCase()+'</h2><div class="grid"><label class="f">Nama<input id="s-'+s.id+'-name" data-s="'+s.id+'" data-f="name" value="'+esc(s.name)+'" autocomplete="off"></label>'+payControls(s)+(s.pay==='gaji'?'':
    '<label class="f">Bagi hasil (% laba bersih)<input id="s-'+s.id+'-share" type="number" step="0.1" min="0" max="100" data-s="'+s.id+'" data-f="share" value="'+num(s.share)+'"></label>'+
-   '<label class="f">Fee per unit (% bagian toko)<input id="s-'+s.id+'-fee" type="number" step="0.01" min="0" max="100" data-s="'+s.id+'" data-f="fee" value="'+num(s.fee)+'"></label></div>'+
+   '<label class="f">Fee per unit (% bagian toko)<input id="s-'+s.id+'-fee" type="number" step="0.01" min="0" max="100" data-s="'+s.id+'" data-f="fee" value="'+num(s.fee)+'"></label>')+'</div>'+
    '<span class="muted small">Fee bisa diisi 1, 2, atau 3 (desimal boleh, cth 0,67). Perubahan berlaku untuk nota baru; nota lama memakai % saat dibuat.</span></section>';});
   h+='<section class="card stack"><h2>Bonus rajin</h2><label class="f">Bonus rajin (% sisa toko, per orang yang dicentang)<input id="c-rajin" type="number" step="0.1" min="0" data-c="rajinRate" value="'+num(cfg.rajinRate)+'"></label></section>'+tgtEditor();
  }
@@ -1287,6 +1373,7 @@ function aturBody(){
   '<div class="row"><button class="btn pri" data-act="sy-test">Hubungkan &amp; uji</button><button class="btn" data-act="sy-now">Sinkronkan sekarang</button></div>'+
   '<div class="row"><button class="btn sm" data-act="sy-pull"'+(hasServer()?'':' disabled')+'>Ambil ulang semua dari Sheet</button><button class="btn sm danger" data-act="sy-off">Putuskan</button></div></section>';}
  if(aturTab==='pengguna')h+=penggunaBody();
+ if(aturTab==='perangkat')h+=devAdminHTML();
  if(aturTab==='data'){
   h+='<section class="card stack"><h2>Cadangan &amp; ekspor</h2><div class="row"><button class="btn" data-act="exp-tx">Unduh nota bulan ini (CSV)</button><button class="btn" data-act="exp-exp">Unduh pengeluaran (CSV)</button></div>'+
   '<div class="row"><button class="btn" data-act="backup">Unduh cadangan (.json)</button><label class="btn" for="restore-file" style="cursor:pointer">Pulihkan dari cadangan</label><input id="restore-file" type="file" accept=".json,application/json" hidden></div>'+
@@ -1298,18 +1385,19 @@ function aturBody(){
  if(aturTab==='sop')h+='<section class="card stack"><h2>SOP &amp; tata tertib '+esc(cfg.shop)+'</h2><span class="badge '+(PREFS.sopSetujui?'good':'warn')+'">'+(PREFS.sopSetujui?'SOP sudah disetujui di perangkat ini':'Belum menyetujui SOP')+'</span>'+sopContent()+'</section>';
  return h;}
 function vAtur(){
- var tabs=isFront()?[['printer','Printer'],['tampilan','Tampilan']]:[['toko','Toko & tarif'],['pengguna','Pengguna'],['tampilan','Tampilan'],['printer','Printer'],['sheets','Google Sheets'],['data','Data'],['aktivitas','Aktivitas'],['sop','SOP'],['tertib','Tata tertib']];
+ var tabs=isFront()?[['printer','Printer'],['tampilan','Tampilan']]:[['toko','Toko & tarif'],['pengguna','Pengguna'],['perangkat','Perangkat'],['tampilan','Tampilan'],['printer','Printer'],['sheets','Google Sheets'],['data','Data'],['aktivitas','Aktivitas'],['sop','SOP'],['tertib','Tata tertib']];
  return'<section class="card"><div class="chips">'+tabs.map(function(t){return'<button class="chip" data-act="atur" data-v="'+t[0]+'" aria-pressed="'+(aturTab===t[0])+'">'+esc(t[1])+'</button>';}).join('')+'</div><p class="muted small" style="margin:8px 0 0">'+(isFront()?'Pengaturan printer dan tampilan untuk perangkat ini.':'Semua isian di menu Atur tersimpan otomatis begitu diubah.')+'</p></section>'+aturBody();}
 
 /* ===== Login, keluar, dan kelola pengguna ===== */
 function saveAuth(){try{localStorage.setItem('kp-auth',JSON.stringify(AUTH));}catch(e){}}
 function loadAuth(){try{var a=JSON.parse(localStorage.getItem('kp-auth')||'null');if(a&&(a.local||(a.session&&(a.role==='admin'||a.role==='front'||a.role==='teknisi'))))AUTH=a;}catch(e){}}
-function sessionExpired(){var u=AUTH&&AUTH.user;try{localStorage.removeItem('kp-auth');}catch(e){}AUTH=null;loginD.user=u&&u!=='lokal'?u:'';loginD.pass='';loginD.err='Sesi berakhir. Silakan masuk lagi.';render();}
+function sessionExpired(){var u=AUTH&&AUTH.user;try{localStorage.removeItem('kp-auth');}catch(e){}AUTH=null;loginD.user=u&&u!=='lokal'?u:'';loginD.pass='';loginD.err=DEVLOST?'Perangkat ini tidak lagi diizinkan oleh Owner (atau sesi dipindah). Hubungi Owner.':'Sesi berakhir. Silakan masuk lagi.';DEVLOST=0;render();}
 async function doLogin(){
  if(loginD.busy)return;
  var url=(loginD.editUrl||!SYNC.url?loginD.url:SYNC.url).trim(),u=String(loginD.user||'').trim().toLowerCase(),p=loginD.pass||'';
  if(!/^https:\/\/script\.google\.com\//.test(url)){loginD.err='Alamat server harus diawali https://script.google.com/';render();return;}
  if(!u||!p){loginD.err='Isi username dan sandi.';render();return;}
+ if(loginD.devname!=null){try{localStorage.setItem('kp-devname',String(loginD.devname).trim().slice(0,40));}catch(e){}}
  loginD.busy=true;loginD.err='';render();
  try{
   var r=await post(url,{action:'login',user:u,pass:p});
@@ -1438,6 +1526,8 @@ function act(a,el){
  if(isFront()&&(/^(usr-|tb-|sy-off|sy-pull|sy-test|go-sheets|del-kas|ask-del-kas|save-kas|save-exp|del-exp|exp-|backup|rm-sample|sample|paid|toggle-rajin|sop-bump|sop-load|sop-print|sop-setujui|del-tx|ask-del$|stk-|absx-|rajin-auto|bk-|aud-|rep-pdf)/.test(a)||(a==='atur'&&['tampilan','printer'].indexOf(v)<0)))return;
  if(/^(set-mode|dg-|setup-)/.test(a)){act3(a,el);return;}
  if(/^(ann-|tm-)/.test(a)){act4(a,el);return;}
+ if(/^dv-/.test(a)){act7(a,el);return;}
+ if(/^ft-/.test(a)){act9(a,el);return;}
  if(/^kd-/.test(a)){act5(a,el);return;}
  if(/^(fm-|lk-)/.test(a)){act6(a,el);return;}
  if(/^(abs-in|abs-out|pic-|ph-del-draft|idle-open|rem-wa|trk-copy|rep-pdf|aud-load|bk-|stk-|absx-|rajin-auto)/.test(a)){if(!isAdmin()&&/^(rep-pdf|aud-load|bk-|stk-|absx-|rajin-auto)/.test(a))return;act2(a,el);return;}
@@ -2674,6 +2764,158 @@ function act6(a,el){
   if(id){var t=findTx(id);if(t)put('tx',t);}
   render();}
 }
+/* ===== v10: ikon tab + kelas status nota ===== */
+var TAB_ICO={kasir:'<rect x="4" y="3" width="16" height="18" rx="3"/><path d="M12 8v8M8 12h8"/>',riwayat:'<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r=".8"/><circle cx="4" cy="12" r=".8"/><circle cx="4" cy="18" r=".8"/>',stok:'<path d="M3 8l9-5 9 5v9l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v9"/>',gaji:'<rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1"/>',biaya:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',laporan:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',atur:'<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>',
+ 't-ringkas':'<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>','t-kerja':'<path d="M14.5 6.5a4 4 0 0 0-5 5L3 18l3 3 6.5-6.5a4 4 0 0 0 5-5l-2.5 2.5-2-2z"/>','t-absen':'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',absen:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>','t-kasbon':'<rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18"/>','t-sop':'<path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M8 8h6M8 12h6"/>','f-sop':'<path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M8 8h6M8 12h6"/>','t-tertib':'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>'};
+function tabIco(id){return'<svg viewBox="0 0 24 24" aria-hidden="true">'+(TAB_ICO[id]||'<circle cx="12" cy="12" r="3"/>')+'</svg>';}
+function stCls(t){return' st-'+String(statusOf(t)||'').toLowerCase().replace(/[^a-z]+/g,'-');}
+/* ===== v10: kunci perangkat ===== */
+var DEVLOST=0,DEV={list:null,users:[],devLock:true,ownerLock:false,me:'',busy:false,err:'',at:0,armed:null,tried:false};
+function devId(){
+ var k='kp-dev',v='';try{v=localStorage.getItem(k)||'';}catch(e){}
+ if(!/^[A-Za-z0-9]{20,40}$/.test(v)){
+  var al='ABCDEFGHJKMNPQRSTVWXYZ23456789',a=new Uint8Array(24);
+  try{crypto.getRandomValues(a);}catch(e){for(var i=0;i<24;i++)a[i]=Math.floor(Math.random()*256);}
+  v='';for(var j=0;j<24;j++)v+=al.charAt(a[j]%al.length);
+  try{localStorage.setItem(k,v);}catch(e){}}
+ return v;}
+function devCode(){var v=devId();return v.slice(0,4)+'-'+v.slice(4,8);}
+function devGuess(){
+ var u=navigator.userAgent||'',os=/Android/.test(u)?'Android':/iPhone|iPad/.test(u)?'iOS':/Windows/.test(u)?'Windows':/Mac OS/.test(u)?'Mac':/Linux/.test(u)?'Linux':'Perangkat';
+ var br=/Edg\//.test(u)?'Edge':/OPR\//.test(u)?'Opera':/Chrome\//.test(u)?'Chrome':/Firefox\//.test(u)?'Firefox':/Safari\//.test(u)?'Safari':'Browser';
+ return os+' · '+br;}
+function devName(){var n='';try{n=localStorage.getItem('kp-devname')||'';}catch(e){}return n||devGuess();}
+function devBadge(s){return'<span class="badge '+(s==='Disetujui'?'good':s==='Diblokir'?'bad':'warn')+'">'+esc(s)+'</span>';}
+function devBindLbl(b){if(!b)return'belum diikat';if(b==='r:teknisi')return'Semua teknisi';if(b==='r:front')return'Semua admin depan';if(b==='r:admin')return'Perangkat Owner';if(b.indexOf('u:')===0){var u=(DEV.users||[]).filter(function(x){return x.username===b.slice(2);})[0];return'Akun: '+(u?u.name+' ('+u.username+')':b.slice(2));}return b;}
+function devLoad(force){
+ if(!isAdmin()||!hasServer()||DEV.busy)return;
+ if(!force&&DEV.at&&Date.now()-DEV.at<180000)return;
+ DEV.busy=true;DEV.tried=true;
+ api({action:'dev_list'}).then(function(r){DEV.busy=false;DEV.at=Date.now();devApply(r);render();}).catch(function(){DEV.busy=false;DEV.at=Date.now();DEV.err='Tidak dapat menghubungi server.';render();});}
+function devApply(r){
+ if(r&&r.ok){DEV.list=r.devs||[];DEV.users=r.users||[];DEV.devLock=!!r.devLock;DEV.ownerLock=!!r.ownerLock;DEV.me=r.me||'';DEV.err='';}
+ else if(r&&r.error==='auth'){sessionExpired();}
+ else DEV.err=/^(action|forbidden)$/.test((r&&r.error)||'')?'Skrip Google belum versi terbaru. Tempel Code.gs terbaru lalu Deploy versi baru.':errMsg(r&&r.error);}
+function devBanner(){
+ if(!isAdmin()||!hasServer())return'';
+ if(!DEV.tried&&!DEV.busy)setTimeout(function(){devLoad(false);},50);
+ var n=(DEV.list||[]).filter(function(d){return d.status==='Menunggu';}).length;
+ if(!n)return'';
+ return'<section class="card stack" style="border-color:var(--warn)"><strong>🔐 '+n+' perangkat menunggu persetujuan</strong><span class="small muted">Staf mencoba masuk dari perangkat baru. Buka daftar untuk menyetujui dan mengikatnya ke akun.</span><div><button class="btn sm pri" data-act="dv-open">Buka daftar perangkat</button></div></section>';}
+function devAdminHTML(){
+ if(!hasServer())return'<section class="card"><span class="small muted">Kunci perangkat butuh koneksi ke Google Sheets. Hubungkan dulu di tab Google Sheets, lalu masuk sebagai Owner.</span></section>';
+ if(!DEV.list&&!DEV.busy)devLoad(true);
+ var h='<section class="card stack"><div class="row sb"><h2>Kunci perangkat</h2><button class="btn sm" data-act="dv-load">Muat ulang</button></div>'+
+  '<span class="small muted">Teknisi dan admin depan hanya bisa masuk dari perangkat yang Anda setujui dan ikat ke akun (atau ke peran). Sesi yang disalin ke perangkat lain tidak berlaku. Pengaturan ini hanya bisa diubah Owner.</span>'+
+  (DEV.err?'<div class="badge bad" style="white-space:normal">'+esc(DEV.err)+'</div>':'')+
+  '<label class="row small" style="cursor:pointer"><input type="checkbox" data-dvcfg="devLock"'+(DEV.devLock?' checked':'')+'> <b>Wajib perangkat terdaftar untuk teknisi &amp; admin depan</b></label>'+
+  '<label class="row small" style="cursor:pointer"><input type="checkbox" data-dvcfg="ownerLock"'+(DEV.ownerLock?' checked':'')+'> <b>Kunci Owner ke perangkat ini juga</b> <span class="muted">(perangkat ini: '+esc(DEV.me||devCode())+')</span></label>'+
+  (DEV.ownerLock?'<span class="small muted">Bila terkunci dari akun Owner: jalankan fungsi <b>bukaKunciPerangkatOwner</b> di editor Apps Script.</span>':'')+
+  '</section>';
+ if(!DEV.list)return h+'<section class="card"><span class="small muted">Memuat…</span></section>';
+ h+='<section class="card stack"><h2>Perangkat ('+DEV.list.length+')</h2>';
+ if(!DEV.list.length)h+='<span class="small muted">Belum ada. Perangkat muncul di sini saat staf mencoba masuk dengan sandi yang benar dari perangkat baru.</span>';
+ DEV.list.forEach(function(d){
+  var bs=[['','— pilih ikatan —'],['r:teknisi','Semua teknisi'],['r:front','Semua admin depan']].concat(DEV.users.map(function(u){return['u:'+u.username,'Akun: '+u.name+' ('+u.username+')'];}));
+  if(d.bind==='r:admin')bs.push(['r:admin','Perangkat Owner']);
+  h+='<div class="box"'+(d.status==='Menunggu'?' style="border-color:var(--warn)"':'')+'><div class="row sb"><strong class="num">'+esc(d.code)+'</strong>'+devBadge(d.status)+'</div>'+
+   '<label class="f">Nama perangkat<input data-dvn="'+esc(d.id)+'" value="'+esc(d.name)+'" autocomplete="off"></label>'+
+   '<label class="f">Terikat ke<select data-dvb="'+esc(d.id)+'">'+bs.map(function(o){return'<option value="'+esc(o[0])+'"'+((d.bind||'')===o[0]?' selected':'')+'>'+esc(o[1])+'</option>';}).join('')+'</select></label>'+
+   '<span class="small muted">Terakhir: '+esc(d.last||'-')+(d.lastUser?' oleh '+esc(d.lastUser):'')+'<br>'+esc(d.ua||'')+'</span>'+
+   '<div class="row">'+(d.status==='Disetujui'?'<button class="btn sm pri" data-act="dv-save" data-v="'+esc(d.id)+'" data-s="Disetujui">Simpan</button>':'<button class="btn sm pri" data-act="dv-save" data-v="'+esc(d.id)+'" data-s="Disetujui">Setujui</button>')+
+   (d.status==='Diblokir'?'<button class="btn sm" data-act="dv-save" data-v="'+esc(d.id)+'" data-s="Menunggu">Buka blokir</button>':'<button class="btn sm danger" data-act="dv-save" data-v="'+esc(d.id)+'" data-s="Diblokir">Blokir</button>')+
+   '<button class="btn sm danger'+(DEV.armed===d.id?' armed':'')+'" data-act="dv-del" data-v="'+esc(d.id)+'">'+(DEV.armed===d.id?'Ya, hapus':'Hapus')+'</button></div></div>';});
+ return h+'</section>';}
+function act7(a,el){
+ var v=el.dataset.v;
+ if(a==='dv-open'){tab='atur';aturTab='perangkat';render();window.scrollTo(0,0);return;}
+ if(!isAdmin())return;
+ if(a==='dv-load'){DEV.err='';devLoad(true);return;}
+ if(a==='dv-save'){
+  var bsel=document.querySelector('[data-dvb="'+v+'"]'),nin=document.querySelector('[data-dvn="'+v+'"]'),st=el.dataset.s,bind=bsel?bsel.value:'';
+  if(st==='Disetujui'&&!bind){toast('Pilih dulu perangkat ini terikat ke akun/peran apa.');return;}
+  DEV.busy=true;api({action:'dev_save',id:v,status:st,bind:bind,name:nin?nin.value:undefined}).then(function(r){DEV.busy=false;DEV.at=Date.now();devApply(r);if(r&&r.ok)toast(st==='Disetujui'?'Perangkat disetujui.':st==='Diblokir'?'Perangkat diblokir.':'Perangkat diperbarui.');else if(r&&r.error==='self')toast('Tidak bisa mengubah perangkat Owner yang sedang dipakai.');render();}).catch(function(){DEV.busy=false;toast('Gagal menghubungi server.');});return;}
+ if(a==='dv-del'){
+  if(DEV.armed!==v){DEV.armed=v;render();setTimeout(function(){if(DEV.armed===v){DEV.armed=null;render();}},4000);return;}
+  DEV.armed=null;DEV.busy=true;api({action:'dev_del',id:v}).then(function(r){DEV.busy=false;DEV.at=Date.now();devApply(r);if(r&&r.ok)toast('Perangkat dihapus.');else if(r&&r.error==='self')toast('Tidak bisa menghapus perangkat Owner yang sedang dipakai.');render();}).catch(function(){DEV.busy=false;toast('Gagal menghubungi server.');});}
+}
+function devCfgSet(k,on){
+ var b={action:'dev_cfg'};b[k]=!!on;DEV.busy=true;
+ api(b).then(function(r){DEV.busy=false;DEV.at=Date.now();devApply(r);if(r&&r.ok)toast('Pengaturan perangkat disimpan.');render();}).catch(function(){DEV.busy=false;toast('Gagal menghubungi server.');render();});}
+/* ===== v10.2: gaji + bagi hasil teknisi, tab Absen Owner, tugas harian Admin depan ===== */
+var PAYMODES=[['bagi','Bagi hasil saja'],['campur','Gaji pokok + bagi hasil'],['gaji','Gaji pokok saja']];
+function baseOf(s){if(!s)return 0;if(s.role==='admin')return +s.base||0;return(s.pay==='gaji'||s.pay==='campur')?(+s.base||0):0;}
+function payLbl(s){for(var i=0;i<PAYMODES.length;i++)if(PAYMODES[i][0]===(s.pay||'bagi'))return PAYMODES[i][1];return PAYMODES[0][1];}
+function payControls(s){
+ var m=s.pay||'bagi';
+ return'<label class="f">Sistem pendapatan<select data-spay="'+s.id+'">'+PAYMODES.map(function(o){return'<option value="'+o[0]+'"'+(m===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select></label>'+
+  (m!=='bagi'?'<label class="f">Gaji pokok / bulan'+moneyBox('id="s-'+s.id+'-base" data-s="'+s.id+'" data-f="base"',s.base)+'</label>':'');}
+function staffPay(id,mode){
+ var s=staff(id);if(!s||s.role==='admin'||!isAdmin())return;
+ var def=s.role==='expert'?40:30;
+ if(mode==='gaji'&&s.pay!=='gaji'){s.shareKeep=(+s.share>0||+s.share===0)?+s.share:def;s.feeKeep=+s.fee>=0?+s.fee:2;s.share=0;s.fee=0;}
+ else if(mode!=='gaji'&&s.pay==='gaji'){s.share=s.shareKeep!=null?+s.shareKeep:def;s.fee=s.feeKeep!=null?+s.feeKeep:2;}
+ s.pay=mode;if(mode==='bagi'){}
+ saveCfg();logAct('Sistem pendapatan',s.name+' → '+payLbl(s));render();}
+function vAbsenOwner(){return'<section class="card"><span class="small muted">Rekap kehadiran seluruh tim. Owner bisa mengisi/mengoreksi hadir, izin, sakit, atau alpa tiap karyawan.</span></section>'+absAdminCard();}
+function frontTodo(){
+ if(!isFront())return'';
+ var A=txs.filter(isActive),td=iso(new Date());
+ var n1=A.filter(function(t){return statusOf(t)==='Diterima';}).length,n2=A.filter(function(t){return statusOf(t)==='Menunggu konfirmasi';}).length,n3=A.filter(function(t){return statusOf(t)==='Selesai';}).length,n4=stkLow().length,self=absDoc(td,absSelfId());
+ var R=[['Unit belum dicek / belum ada biaya',n1,'proses'],['Menunggu persetujuan pelanggan',n2,'proses'],['Selesai, belum diambil (follow-up)',n3,'tunggu']];
+ var h='<section class="card stack"><h2>Tugas hari ini</h2>'+R.map(function(r){return'<div class="row sb"><span class="small">'+r[0]+'</span><button class="btn sm'+(r[1]?' pri':'')+'" data-act="ft-go" data-v="'+r[2]+'">'+r[1]+'</button></div>';}).join('')+
+  '<div class="row sb"><span class="small">Stok menipis (lapor Owner)</span><button class="btn sm'+(n4?' pri':'')+'" data-act="ft-tab" data-v="stok">'+n4+'</button></div>'+
+  '<div class="row sb"><span class="small">Absen hari ini</span>'+(self&&self.in?'<span class="badge good">Sudah absen '+esc(self.in)+'</span>':'<button class="btn sm pri" data-act="ft-tab" data-v="absen">Belum absen</button>')+'</div></section>';
+ return h;}
+function act9(a,el){
+ var v=el.dataset.v;
+ if(a==='ft-go'){tab='riwayat';flt=v;openTx=null;render();window.scrollTo(0,0);}
+ else if(a==='ft-tab'){tab=v;render();window.scrollTo(0,0);}
+}
+/* ===== v10.3: cetak 1x, tulisan tebal + QR ===== */
+var QRPOS=null;var PRN={busy:false,last:{}};
+function qrCanvas(t){
+ var tl=trkLink(t);if(!tl)return null;var qm=qrMatrix(tl);if(!qm)return null;
+ var W=(+PREFS.paper===48)?576:384,qn=qm.length,qq=2,qs=Math.max(3,Math.floor(Math.min(W*0.62,230)/(qn+qq*2))),qz=(qn+qq*2)*qs;
+ var cv=document.createElement('canvas');cv.width=W;cv.height=qz+6;var x=cv.getContext('2d');
+ x.fillStyle='#fff';x.fillRect(0,0,W,cv.height);x.fillStyle='#000';var qx=Math.round((W-qz)/2);
+ for(var r=0;r<qn;r++)for(var c=0;c<qn;c++)if(qm[r][c])x.fillRect(qx+(c+qq)*qs,3+(r+qq)*qs,qs,qs);
+ return cv;}
+function rasterRaw(cv){var b=rasterBytes(cv);return Array.prototype.slice.call(b,2,b.length-7);}
+function textBytes(t){
+ var B=[27,64],W=+PREFS.paper||32;
+ function T(s){s=ascii(s);for(var i=0;i<s.length;i++)B.push(s.charCodeAt(i));B.push(10);}
+ B.push(27,97,1,27,69,1,29,33,17);wrap(ascii(cfg.shop).toUpperCase(),Math.floor(W/2)).forEach(T);B.push(29,33,0,27,69,0);
+ if(cfg.addr)wrap(ascii(cfg.addr),W).forEach(T);if(cfg.phone)T('Telp/WA '+cfg.phone);
+ B.push(27,97,0,27,69,1);
+ var L=notaText(t,{noHead:true}).split('\n'),i=L.length;
+ while(i>0&&/^(Terima kasih|Simpan nota)/.test(L[i-1].trim()||'Terima kasih'))i--;
+ L.slice(0,i).forEach(T);
+ var q=qrCanvas(t);
+ if(q){B.push(27,97,1,27,69,1);T('PANTAU STATUS UNIT');B.push(27,69,0);B=B.concat(rasterRaw(q));T('Scan untuk lihat status unit');B.push(27,97,0);}
+ B.push(27,97,1,27,69,1);T('Terima kasih atas kepercayaan Anda');B.push(27,69,0);T('Simpan nota ini untuk pengambilan unit.');
+ B.push(27,100,3,29,86,66,0);return new Uint8Array(B);}
+function drawNota(t){
+ QRPOS=null;var cv=drawNota0(t),qp=QRPOS,w=cv.width,h=cv.height,o=document.createElement('canvas');o.width=w;o.height=h;
+ var x=o.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.globalCompositeOperation='darken';
+ x.drawImage(cv,0,0);x.drawImage(cv,1,0);x.drawImage(cv,0,1);
+ if(qp){x.globalCompositeOperation='source-over';x.fillStyle='#000';for(var r=0;r<qp.qn;r++)for(var c=0;c<qp.qn;c++)if(qp.qm[r][c])x.fillRect(qp.qx+(c+qp.qq)*qp.qs,qp.y+(r+qp.qq)*qp.qs,qp.qs,qp.qs);}
+ return o;}
+function rasterBytes(cv){
+ var w=cv.width,h=cv.height,d=cv.getContext('2d').getImageData(0,0,w,h).data,wb=w>>3,B=[],band=64;B.push(27,64);
+ for(var y0=0;y0<h;y0+=band){var bh=Math.min(band,h-y0);B.push(29,118,48,0,wb&255,wb>>8,bh&255,bh>>8);
+  for(var y=0;y<bh;y++)for(var xb=0;xb<wb;xb++){var by=0;
+   for(var bit=0;bit<8;bit++){var p=((y0+y)*w+(xb<<3)+bit)*4,lum=d[p]*0.299+d[p+1]*0.587+d[p+2]*0.114;if(lum<185)by|=0x80>>bit;}B.push(by);}}
+ B.push(27,100,4,29,86,66,0);return new Uint8Array(B);}
+async function printTx(t){
+ if(!btSupported()){toast('Browser belum mendukung Bluetooth langsung. Gunakan Chrome Android atau tombol Bagikan.');return;}
+ if(PRN.busy){toast('Masih mencetak, mohon tunggu.');return;}
+ var now=Date.now();if(PRN.last[t.id]&&now-PRN.last[t.id]<20000&&!confirm('Nota ini baru saja dicetak. Cetak lagi?'))return;
+ PRN.busy=true;
+ try{await btEnsure();toast('Mengirim nota ke printer…');await preSig(t);
+  await btSend(PREFS.pmode==='text'?textBytes(t):rasterBytes(drawNota(t)));PRN.last[t.id]=Date.now();toast('Nota terkirim ke printer.');}
+ catch(e){toast(btErr(e));}
+ PRN.busy=false;}
 
 /* ================= v8: stok, foto, pelacakan, pengingat, absensi, target, grafik, laporan, cadangan, aktivitas ================= */
 var ABSL={hadir:'Hadir',telat:'Telat',izin:'Izin',sakit:'Sakit',alpa:'Alpa',libur:'Libur'};
@@ -3141,6 +3383,8 @@ document.addEventListener('change',function(e){
  if(ds.sq!==undefined){sopD.quiz[ds.sq]=el.value;sopUpdate();return;}
  if(ds.sopchk!==undefined){sopD.checked=!!el.checked;sopUpdate();return;}
  if(!canWrite())return;
+ if(ds.spay!==undefined){staffPay(ds.spay,el.value);return;}
+ if(ds.dvcfg!==undefined){devCfgSet(ds.dvcfg,!!el.checked);return;}
  if(ds.fm!==undefined){if(ds.id){var tf=findTx(ds.id);if(tf)put('tx',tf);}return;}
  if(ds.kd!==undefined){var tk2=findTx(ds.kd);if(tk2)put('tx',tk2);return;}
  if(ds.tm!==undefined){tmD.sel[ds.tm]=!!el.checked;render();return;}
@@ -3202,7 +3446,7 @@ async function boot(){
  if(isAdmin()){snapRates();snapCost();stkSync();rkSchedule();}
  if(isAdmin()){
   var c0=DOCS['cfg/main'];
-  if(c0&&(c0.staff||[]).some(function(s){return s.role!=='admin'&&(+s.base||0)>0;}))saveCfg();
+  /* v10: teknisi boleh bergaji pokok (sistem pendapatan dipilih Owner) */
   /* Pertama kali admin masuk di perangkat yang sudah berisi data: kirim semuanya ke Sheet. */
   if(hasServer()&&!SYNC.linked){Object.keys(DOCS).forEach(function(kk){SYNC.pending[kk]=1;});SYNC.linked=true;saveSync();}
   pubPool();
