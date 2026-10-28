@@ -870,7 +870,7 @@ function editSums(){var tot=0,cost=0;
  (editD.items||[]).forEach(function(it){var q=+it.qty||1;tot+=q*(+it.price||0);if(it.type==='part')cost+=q*(+it.cost||0);});
  var a=document.getElementById('edit-total'),b=document.getElementById('edit-cost'),c=document.getElementById('edit-net');
  if(a)a.textContent=rp(tot);if(b)b.textContent=rp(cost);if(c)c.textContent=rp(Math.max(0,tot-cost));}
-function editPanel(t){
+function editPanel0(t){
  var tot=0,cost=0,fin=isFin(t);
  editD.items.forEach(function(it){var q=+it.qty||1;tot+=q*(+it.price||0);if(it.type==='part')cost+=q*(+it.cost||0);});
  var h='<div class="stack">';
@@ -882,7 +882,7 @@ function editPanel(t){
   (p?'<label class="f">Modal'+moneyBox('id="ed-'+i+'-c" data-ed="1" data-i="'+i+'" data-k="cost"',it.cost)+'</label>':'')+'</div></div>';});
  h+='<div class="row"><button class="btn sm" data-act="edit-add-jasa">+ Jasa</button><button class="btn sm" data-act="edit-add-part">+ Sparepart</button></div>'+
  '<div class="ledger"><div class="ln"><span>Total biaya</span><span class="num" id="edit-total">'+rp(tot)+'</span></div><div class="ln"><span>Modal sparepart</span><span class="num" id="edit-cost">'+rp(cost)+'</span></div><div class="ln tot"><span>Laba bersih (sementara)</span><span class="num" id="edit-net">'+rp(Math.max(0,tot-cost))+'</span></div></div>'+
- (fin?'<div class="box"><strong>🔒 Nota sudah selesai</strong><span class="small muted">Perubahan biaya/item wajib persetujuan Owner. Minta Owner memasukkan PIN-nya.</span><label class="f">PIN Owner<input id="ed-pin" type="password" inputmode="numeric" data-ep="1" autocomplete="off"></label></div>':'')+
+ (false?'<div class="box"><strong>🔒 Nota sudah selesai</strong><span class="small muted">Perubahan biaya/item wajib persetujuan Owner. Minta Owner memasukkan PIN-nya.</span><label class="f">PIN Owner<input id="ed-pin" type="password" inputmode="numeric" data-ep="1" autocomplete="off"></label></div>':'')+
  '<div class="row"><button class="btn pri sm" data-act="save-edit" data-v="'+t.id+'">💾 Simpan perubahan</button><button class="btn sm" data-act="abort-edit">Batal</button></div></div>';
  return h;}
 
@@ -925,16 +925,16 @@ function detail(t){
  var c=calc(t),stt=statusOf(t),canc=stt==='Dibatalkan',fin=isFin(t),w=warr(t),id=t.id,h='';
  h+='<div class="ledger">'+(t.device?ln2('Perangkat',esc(t.device)):'')+(t.imei?ln2('IMEI / SN','<span class="num">'+esc(t.imei)+'</span>'):'')+(t.complaint?ln2('Keluhan',esc(t.complaint)):'')+
   (t.lockType&&t.lockType!=='none'?ln2('Kunci layar <span class="muted small">(internal)</span>',esc(lockInternal(t))):'')+
-  ln2('No. HP','<span class="num">'+esc(t.phone||'-')+'</span> '+(isTech()?'':'<button class="linkbtn" data-act="chg-cust" data-v="'+t.id+'">✏️ Ubah</button>'))+
+  ln2('No. HP','<span class="num">'+esc(t.phone||'-')+'</span> '+(isAdmin()?'<button class="linkbtn" data-act="chg-cust" data-v="'+t.id+'">✏️ Ubah</button>':''))+(t.extra||[]).filter(function(x){return x&&x.k&&x.v;}).map(function(x){return ln2(esc(x.k),esc(x.v));}).join('')+(isAdmin()&&t.ownerNote?ln2('Catatan Owner',esc(t.ownerNote)):'')+
   ln2('Tanggal masuk',fdate(t.date))+(t.doneDate?ln2('Tanggal selesai',fdate(t.doneDate)):'')+(t.pickDate?ln2('Tanggal diambil',fdate(t.pickDate)):'')+(t.cancelAt?ln2('Tanggal batal',fdate(t.cancelAt)):'')+
   (t.signature&&/^data:image\//.test(t.signature)?ln2('Tanda tangan','<img src="'+esc(t.signature)+'" class="sigimg" alt="TTD">'):'')+'</div>';
  h+=dgBox(t);
- if(editD.id===id)h+='<div class="box"><h3>Edit biaya &amp; item</h3>'+editPanel(t)+'</div>';
+ if(editD.id===id)h+='<div class="box"><h3>Edit nota (Owner)</h3>'+editPanel(t)+'</div>';
  else{
   h+='<div class="ledger">'+(t.items||[]).map(function(i){var q=+i.qty||1;return'<div class="ln"><span>'+esc(i.name)+' <span class="muted small">'+q+' × '+nm(i.price)+(i.type==='part'&&!isFront()?' · modal '+nm(i.cost):'')+'</span></span><span class="num">'+rp(q*(+i.price||0))+'</span></div>';}).join('')+'</div>'+
   splitLedger(c,techName(t.techId))+
   (t.edits&&t.edits.length?'<span class="small muted">Riwayat perubahan (ACC Owner): '+t.edits.map(function(e){return fdate(e.date)+' '+rp(e.from)+' → '+rp(e.to);}).join(' · ')+'</span>':'')+
-  (canc?'':'<div><button class="btn sm" data-act="ask-edit" data-v="'+id+'">'+(fin?'🔒 Edit biaya &amp; item (PIN Owner)':'✏️ Edit biaya &amp; item')+'</button></div>');}
+  (canc||!isAdmin()?'':'<div><button class="btn sm" data-act="ask-edit" data-v="'+id+'">✏️ Edit nota (hanya Owner)</button></div>');}
  if(canc)h+='<div class="box"><strong class="neg">Nota dibatalkan'+(t.cancelAt?' pada '+fdate(t.cancelAt):'')+'</strong>'+(t.cancelReason?'<span class="small">Alasan: '+esc(t.cancelReason)+'</span>':'')+'<span class="muted small">Tidak masuk omzet dan bagi hasil.</span></div>';
  else{
   h+='<div class="box"><h3>Pembayaran &amp; garansi</h3><div><div class="small muted" style="margin-bottom:4px">Metode pembayaran</div><div class="seg">'+PAYS.map(function(p){return'<button data-act="set-pay" data-v="'+id+'" data-p="'+p+'" aria-pressed="'+(t.pay===p)+'">'+p+'</button>';}).join('')+'</div></div>'+
@@ -1582,19 +1582,21 @@ function act(a,el){
  else if(a==='set-pay'){t=findTx(v);if(!t)return;t.pay=el.dataset.p||'Tunai';put('tx',t);logAct('Pembayaran nota',t.no+' · '+t.pay);render();toast('Pembayaran tersimpan: '+t.pay+'.');}
  else if(a==='set-warr'){t=findTx(v);if(!t)return;t.warrantyDays=+el.dataset.n||0;put('tx',t);logAct('Garansi nota',t.no+' · '+(t.warrantyDays?t.warrantyDays+' hari':'tanpa garansi'));render();toast(t.warrantyDays?'Garansi tersimpan: '+t.warrantyDays+' hari.':'Garansi dihapus dari nota ini.');}
  else if(a==='chg-cust'){chgCust(v);}
- else if(a==='ask-edit'){t=findTx(v);if(!t||!isActive(t))return;editD={id:v,items:JSON.parse(JSON.stringify(t.items||[])),pin:''};render();}
+ else if(a==='ef-add-x'){if(isAdmin()&&editD.f){editD.f.extra.push({k:'',v:''});render();}}
+ else if(a==='ef-rm-x'){if(isAdmin()&&editD.f){editD.f.extra.splice(+el.dataset.i,1);render();}}
+ else if(a==='ask-edit'){t=findTx(v);if(!t||!isActive(t)||!isAdmin())return;editD={id:v,items:JSON.parse(JSON.stringify(t.items||[])),pin:''};render();}
  else if(a==='abort-edit'){editD={id:null,items:null,pin:''};render();}
  else if(a==='edit-add-jasa'){if(editD.items){editD.items.push({type:'jasa',name:'',qty:1,price:''});render();}}
  else if(a==='edit-add-part'){if(editD.items){editD.items.push({type:'part',name:'',qty:1,price:'',cost:0});render();}}
  else if(a==='edit-rm'){if(editD.items){editD.items.splice(i,1);if(!editD.items.length)editD.items.push({type:'jasa',name:'',qty:1,price:''});render();}}
- else if(a==='save-edit'){t=findTx(v);if(!t||editD.id!==v||!editD.items)return;if(isPaid(t)&&locked(payDate(t)))return;
+ else if(a==='save-edit'){t=findTx(v);if(!t||editD.id!==v||!editD.items||!isAdmin())return;if(isPaid(t)&&locked(payDate(t)))return;
   var nIt=editD.items.filter(function(x){return String(x.name||'').trim()&&(+x.price||0)>0;}).map(function(x){return{type:x.type,name:String(x.name).trim(),qty:Math.max(1,+x.qty||1),price:+x.price||0,cost:x.type==='part'?((x.sid&&isFront()&&x.cost==null)?null:(+x.cost||0)):0,sid:(x.type==='part'&&x.sid)?x.sid:undefined};});
-  if(!nIt.length){toast('Minimal satu baris dengan nama dan harga.');return;}
+  if(!nIt.length&&(t.items||[]).length){toast('Minimal satu baris dengan nama dan harga.');return;}
   var fin=isFin(t);
-  if(fin&&!pinGuard(editD.pin))return;
-  var before=calc(t).total;t.items=nIt;
+  if(!ownerCheck(t))return;
+  var before=calc(t).total;var chg=ownerApply(t);t.items=nIt;
   if(fin)t.edits=(t.edits||[]).concat([{date:iso(new Date()),from:before,to:calc(t).total}]);
-  put('tx',t);logAct('Edit biaya nota',t.no+' · '+rp(before)+' → '+rp(calc(t).total)+(fin?' (PIN Owner)':''));editD={id:null,items:null,pin:''};render();toast(fin?'Perubahan disimpan (ACC Owner).':'Biaya & item nota tersimpan.');}
+  put('tx',t);logAct('Edit nota (Owner)',t.no+' · '+(chg.length?chg.join('; ')+' · ':'')+'biaya '+rp(before)+' → '+rp(calc(t).total));editD={id:null,items:null,pin:''};render();toast('Perubahan nota disimpan.');}
  else if(a==='tb-ask'){tbD.ask=v;tbD.pin='';render();}
  else if(a==='tb-abort'){tbD.ask=null;tbD.pin='';render();}
  else if(a==='tb-close'){if(!cfg.ownerPinH){toast('PIN Owner belum diatur. Atur di Atur › Toko & tarif.');return;}if(!ownerOK(tbD.pin)){toast('PIN Owner salah.');return;}
@@ -2963,7 +2965,7 @@ function msgText(t,type){
 
 /* ===== v10.8: ubah nama & No. HP pelanggan di nota ===== */
 function chgCust(id){
- var t=findTx(id);if(!t||isTech())return;
+ var t=findTx(id);if(!t||!isAdmin())return;
  var n=prompt('Nama pelanggan:',t.customer||'');if(n===null)return;
  var p=prompt('No. HP / WhatsApp pelanggan:',t.phone||'');if(p===null)return;
  n=n.trim();p=p.trim();if(!n){toast('Nama tidak boleh kosong.');return;}
@@ -2971,6 +2973,40 @@ function chgCust(id){
  t.customer=n;t.phone=p;put('tx',t);logAct('Ubah data pelanggan',t.no+': '+old+' → '+n+' / '+p);
  render();toast('Data pelanggan diperbarui.');}
 function trkLine(t){var l=trkLink(t);return l?'\n\n📍 *Pantau status unit Anda kapan saja:*\n'+l:'';}
+
+/* ===== v10.10: Edit nota lengkap, hanya Owner ===== */
+function ownerFields(t){return{customer:t.customer||'',phone:t.phone||'',device:t.device||'',imei:t.imei||'',complaint:t.complaint||'',kondisi:t.kondisi||'',date:t.date||'',techId:t.techId||'',pay:t.pay||'Tunai',warr:String(+t.warrantyDays||0),note:t.ownerNote||'',extra:(t.extra||[]).map(function(x){return{k:x.k||'',v:x.v||''};})};}
+function efSet(key,val){if(!editD.f)return;var m=/^x(\d+)([kv])$/.exec(key);if(m){var r=editD.f.extra[+m[1]];if(r)r[m[2]]=val;}else editD.f[key]=val;}
+function ownerCheck(t){var f=editD.f;if(!f)return true;
+ if(!String(f.customer).trim()){toast('Nama pelanggan tidak boleh kosong.');return false;}
+ if(f.date&&f.date!==t.date&&locked(f.date)){toast('Tanggal itu masuk periode yang sudah ditutup.');return false;}
+ return true;}
+function ownerApply(t){var f=editD.f,ch=[];if(!f)return ch;
+ function set(k,v,lbl){v=String(v).trim();var old=t[k]==null?'':t[k];if(String(old)!==v){ch.push(lbl+': '+(old||'-')+' → '+(v||'-'));t[k]=v;}}
+ set('customer',f.customer,'Nama');set('phone',f.phone,'HP');set('device',f.device,'Perangkat');set('imei',f.imei,'IMEI');
+ set('complaint',f.complaint,'Keluhan');set('kondisi',f.kondisi,'Kondisi');
+ if(f.date&&f.date!==t.date){ch.push('Tanggal: '+t.date+' → '+f.date);t.date=f.date;}
+ if(f.techId!==(t.techId||'')){ch.push('Teknisi: '+techName(t.techId)+' → '+techName(f.techId));t.techId=f.techId;}
+ if(f.pay!==(t.pay||'')){ch.push('Bayar: '+t.pay+' → '+f.pay);t.pay=f.pay;}
+ var w=Math.max(0,+f.warr||0);if(w!==(+t.warrantyDays||0)){ch.push('Garansi: '+(+t.warrantyDays||0)+' → '+w+' hari');t.warrantyDays=w;}
+ var nt=String(f.note||'').trim();if(nt!==(t.ownerNote||'')){ch.push('Catatan Owner diubah');if(nt)t.ownerNote=nt;else delete t.ownerNote;}
+ var ex=(f.extra||[]).filter(function(x){return String(x.k).trim()&&String(x.v).trim();}).map(function(x){return{k:String(x.k).trim(),v:String(x.v).trim()};});
+ if(JSON.stringify(ex)!==JSON.stringify(t.extra||[])){ch.push('Data tambahan diubah');if(ex.length)t.extra=ex;else delete t.extra;}
+ return ch;}
+function editPanel(t){
+ var f=editD.f||(editD.f=ownerFields(t)),T=techs(),W=WARRS.slice();if(W.indexOf(+f.warr)<0)W.push(+f.warr);W.sort(function(a,b){return a-b;});
+ function inp(k,lbl,type){return'<label class="f">'+lbl+'<input data-ef="'+k+'" type="'+(type||'text')+'" value="'+esc(f[k])+'" autocomplete="off"></label>';}
+ function ta(k,lbl){return'<label class="f">'+lbl+'<textarea data-ef="'+k+'" rows="2">'+esc(f[k])+'</textarea></label>';}
+ var h='<div class="stack"><span class="small muted">Hanya Owner yang dapat mengubah data nota. Setiap perubahan tercatat di log aktivitas.</span><div class="grid">'+
+  inp('customer','Nama pelanggan')+inp('phone','No. HP / WhatsApp','tel')+inp('device','Perangkat')+inp('imei','IMEI / SN')+inp('date','Tanggal masuk','date')+
+  '<label class="f">Teknisi pengerja<select data-ef="techId"><option value="">—</option>'+T.map(function(s){return'<option value="'+esc(s.id)+'"'+(f.techId===s.id?' selected':'')+'>'+esc(s.name)+'</option>';}).join('')+'</select></label>'+
+  '<label class="f">Pembayaran<select data-ef="pay">'+PAYS.map(function(p){return'<option'+(f.pay===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select></label>'+
+  '<label class="f">Garansi<select data-ef="warr">'+W.map(function(d){return'<option value="'+d+'"'+(+f.warr===d?' selected':'')+'>'+(d?d+' hari':'Tanpa garansi')+'</option>';}).join('')+'</select></label></div>'+
+  ta('complaint','Keluhan')+ta('kondisi','Kondisi awal unit')+ta('note','Catatan Owner (internal, tidak dicetak)')+
+  '<strong class="small">Data tambahan (opsional)</strong><span class="small muted">Tambahkan kolom bebas sesuai kebutuhan, misalnya "Nomor garansi vendor" atau "Lokasi rak". Tampil di detail nota.</span>'+
+  (f.extra||[]).map(function(x,i){return'<div class="grid"><label class="f">Nama kolom<input data-ef="x'+i+'k" value="'+esc(x.k)+'" autocomplete="off"></label><label class="f">Isi<input data-ef="x'+i+'v" value="'+esc(x.v)+'" autocomplete="off"></label><button class="linkbtn" data-act="ef-rm-x" data-i="'+i+'">Hapus kolom</button></div>';}).join('')+
+  '<div><button class="btn sm" data-act="ef-add-x">+ Tambah kolom</button></div><strong class="small">Biaya &amp; item</strong></div>';
+ return h+editPanel0(t);}
 
 /* ================= v8: stok, foto, pelacakan, pengingat, absensi, target, grafik, laporan, cadangan, aktivitas ================= */
 var ABSL={hadir:'Hadir',telat:'Telat',izin:'Izin',sakit:'Sakit',alpa:'Alpa',libur:'Libur'};
@@ -3407,6 +3443,7 @@ document.addEventListener('input',function(e){
   else if(ds.c){cfg[ds.c]=val;saveCfg();}
   else if(ds.s){var sp=staff(ds.s);if(sp){sp[ds.f]=val;saveCfg();}}
   return;}
+ if(ds.ef!==undefined){efSet(ds.ef,el.value);return;}
  if(ds.fm!==undefined){var ff=fmGet(ds.id);if(ff)ff[ds.fm]=el.value;return;}
  if(ds.kd!==undefined){var tk=findTx(ds.kd);if(tk)tk.kondisi=el.value;return;}
  if(ds.ann!==undefined){annD[ds.ann]=el.value;return;}
