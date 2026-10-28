@@ -230,11 +230,16 @@ a.btn{display:inline-flex;align-items:center}
 @media (min-width:880px){.top{margin:0 auto;max-width:880px;border-radius:0 0 22px 22px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media print{.tabs,.top,.savebar{display:none!important}}
+
+.wm{text-align:center;font:700 11px/14px "IBM Plex Sans",system-ui,Arial,sans-serif;letter-spacing:.06em;color:var(--muted);opacity:.7;margin-top:0;padding:4px 0 28px;position:relative;z-index:0;pointer-events:none}
+body:has(nav.tabs) .wm{margin-top:-92px;padding-bottom:96px}
+@media print{.wm{display:none}}
 .t8 .tabs-in{overflow-x:auto;scrollbar-width:none}.t8 .tab{flex:1 0 auto;min-width:62px}
 </style>
 </head>
 <body>
 <div id="app"></div>
+<div class="wm">by Deroid Unbricker</div>
 <div id="toast" role="status" aria-live="polite"></div>
 <script>
 (function(){
