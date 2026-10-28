@@ -925,7 +925,7 @@ function detail(t){
  var c=calc(t),stt=statusOf(t),canc=stt==='Dibatalkan',fin=isFin(t),w=warr(t),id=t.id,h='';
  h+='<div class="ledger">'+(t.device?ln2('Perangkat',esc(t.device)):'')+(t.imei?ln2('IMEI / SN','<span class="num">'+esc(t.imei)+'</span>'):'')+(t.complaint?ln2('Keluhan',esc(t.complaint)):'')+
   (t.lockType&&t.lockType!=='none'?ln2('Kunci layar <span class="muted small">(internal)</span>',esc(lockInternal(t))):'')+
-  (t.phone?ln2('No. HP','<span class="num">'+esc(t.phone)+'</span>'):'')+
+  ln2('No. HP','<span class="num">'+esc(t.phone||'-')+'</span> '+(isTech()?'':'<button class="linkbtn" data-act="chg-cust" data-v="'+t.id+'">✏️ Ubah</button>'))+
   ln2('Tanggal masuk',fdate(t.date))+(t.doneDate?ln2('Tanggal selesai',fdate(t.doneDate)):'')+(t.pickDate?ln2('Tanggal diambil',fdate(t.pickDate)):'')+(t.cancelAt?ln2('Tanggal batal',fdate(t.cancelAt)):'')+
   (t.signature&&/^data:image\//.test(t.signature)?ln2('Tanda tangan','<img src="'+esc(t.signature)+'" class="sigimg" alt="TTD">'):'')+'</div>';
  h+=dgBox(t);
@@ -1581,6 +1581,7 @@ function act(a,el){
   msgT=STMSG[s]||msgT;put('tx',t);logAct('Status nota',t.no+' → '+(STLBL[s]||s));render();toast('Status tersimpan: "'+(STLBL[s]||s)+'".');}
  else if(a==='set-pay'){t=findTx(v);if(!t)return;t.pay=el.dataset.p||'Tunai';put('tx',t);logAct('Pembayaran nota',t.no+' · '+t.pay);render();toast('Pembayaran tersimpan: '+t.pay+'.');}
  else if(a==='set-warr'){t=findTx(v);if(!t)return;t.warrantyDays=+el.dataset.n||0;put('tx',t);logAct('Garansi nota',t.no+' · '+(t.warrantyDays?t.warrantyDays+' hari':'tanpa garansi'));render();toast(t.warrantyDays?'Garansi tersimpan: '+t.warrantyDays+' hari.':'Garansi dihapus dari nota ini.');}
+ else if(a==='chg-cust'){chgCust(v);}
  else if(a==='ask-edit'){t=findTx(v);if(!t||!isActive(t))return;editD={id:v,items:JSON.parse(JSON.stringify(t.items||[])),pin:''};render();}
  else if(a==='abort-edit'){editD={id:null,items:null,pin:''};render();}
  else if(a==='edit-add-jasa'){if(editD.items){editD.items.push({type:'jasa',name:'',qty:1,price:''});render();}}
@@ -2925,15 +2926,51 @@ function maskPhone(p){var s=String(p||''),idx=[],i;for(i=0;i<s.length;i++)if(/\d
 function holdDays(){return +cfg.holdDays>0?+cfg.holdDays:30;}
 var HOLDNOTE='Sesuai ketentuan toko, unit yang tidak diambil lebih dari 30 hari bukan lagi menjadi tanggung jawab kami.';
 function holdLine(){return'📌 *Ketentuan pengambilan unit*\nSesuai ketentuan toko, unit yang tidak diambil lebih dari *'+holdDays()+' hari* bukan lagi menjadi tanggung jawab kami. Bila ada kendala, silakan kabari kami dan kami bantu atur jadwalnya.';}
-function waHead(t){return'Yth. Bapak/Ibu *'+(t.customer||'Pelanggan')+'*\n\n'+greet()+' 👋\nKami dari *'+cfg.shop+'*.\n\n';}
-function waFoot(){return'\n\n✨ _Kepuasan Anda adalah prioritas kami._\n\n━━━━━━━━━━━━━━\nHormat kami,\n*'+cfg.shop+'*'+(cfg.phone?'\n📞 '+cfg.phone:'')+(cfg.addr?'\n📍 '+cfg.addr:'');}
+var LN='━━━━━━━━━━━━━━';
+function salam(t){var n=String(t.customer||'').trim();if(!n)return'Yth. Bapak/Ibu *Pelanggan*';
+ return/^(pak|bapak|bu|ibu|bang|mas|mbak|kak|kakak|om|tante|haji|hj)\b/i.test(n)?'Yth. *'+n+'*':'Yth. Bapak/Ibu *'+n+'*';}
+function waHead(t){return salam(t)+'\n\n'+greet()+' 👋\nKami dari *'+cfg.shop+'*.\n\n';}
+function waFoot(){return'\n\n✨ _Kepuasan Anda adalah prioritas kami._\n\n'+LN+'\nHormat kami,\n*'+cfg.shop+'*'+(cfg.phone?'\n📞 '+cfg.phone:'')+(cfg.addr?'\n📍 '+cfg.addr:'');}
+function holdDays(){return +cfg.holdDays>0?+cfg.holdDays:30;}
+var HOLDNOTE='Sesuai ketentuan toko, unit yang tidak diambil lebih dari 30 hari bukan lagi menjadi tanggung jawab kami.';
+function holdLine(){return'📌 *Ketentuan pengambilan unit*\nSesuai ketentuan toko, unit yang tidak diambil lebih dari *'+holdDays()+' hari* bukan lagi menjadi tanggung jawab kami. Bila ada kendala, silakan kabari kami dan kami bantu atur jadwalnya.';}
+function itemL(t){return(t.items||[]).map(function(i){return'▪️ '+i.name+' ('+(+i.qty||1)+' × '+rp(i.price)+')';}).join('\n');}
+function thanks(){return'Terima kasih atas kepercayaan Bapak/Ibu 🙏';}
 function msgText(t,type){
- if(type==='selesai'){
-  var c=calc(t),w=warr(t),T3=TT();
-  return waHead(t)+'✅ *UNIT SUDAH SELESAI*\n📱 '+unitDesc(t)+'\n\n━━━━━━━━━━━━━━\n🧾 No. Nota   : '+t.no+'\n💰 Total biaya : *'+rp(c.total)+'*\n💳 Pembayaran : '+t.pay+(+t.warrantyDays>0?'\n🛡️ Garansi      : '+t.warrantyDays+' hari'+(w&&w.started?' (s.d. '+fdate(w.until)+')':''):'')+'\n━━━━━━━━━━━━━━\n\nUnit dapat diambil di toko kami pada jam operasional ('+T3.buka+' – '+T3.tutup+', '+T3.hariKerja+').\nMohon membawa nota saat pengambilan.\n\n'+holdLine()+'\n\nTerima kasih atas kepercayaan Bapak/Ibu 🙏'+waFoot();}
- var m=msgText0(t,type);
- if(type==='ingat')m=m.replace('\n\nTerima kasih atas pengertian','\n\n'+holdLine()+'\n\nTerima kasih atas pengertian');
- return m;}
+ var c=calc(t),w=warr(t),dev=unitDesc(t),H=waHead(t),F=waFoot(),no=t.no,T3=TT(),m;
+ var card=function(rows){return LN+'\n'+rows.filter(Boolean).join('\n')+'\n'+LN;};
+ if(type==='terima'){var has=(t.items||[]).length;
+  m=H+'📥 *UNIT DITERIMA*\n📱 '+dev+'\n\n'+card(['🧾 No. Nota : '+no,'📅 Tanggal : '+fdate(t.date),t.complaint?'🔧 Keluhan : '+t.complaint:''])+'\n\n'+
+   (has?'*Rincian pekerjaan*\n'+itemL(t)+'\n\n💰 Estimasi biaya : *'+rp(c.total)+'*':'🔍 Unit kami periksa lebih dulu. Biaya kami sampaikan setelah pemeriksaan dan *baru dikerjakan setelah Bapak/Ibu setuju*.')+
+   '\n\nPerkembangan akan kami kabari melalui WhatsApp ini.'+trkLine(t)+'\n\n'+thanks()+F;return m;}
+ if(type==='proses')return H+'🔧 *UNIT SEDANG DIKERJAKAN*\n📱 '+dev+'\n\n'+card(['🧾 No. Nota : '+no,'👨‍🔧 Teknisi : '+techName(t.techId)])+'\n\nKami akan segera mengabari setelah pengerjaan selesai. Mohon kesabaran Bapak/Ibu.'+trkLine(t)+'\n\n'+thanks()+F;
+ if(type==='diag'){var dg=t.diag||{},st=(dg.tahap||[]).filter(function(x){return String(x.t||'').trim()&&(+x.est||0)>0;});
+  return H+'🔍 *HASIL PEMERIKSAAN*\n📱 '+dev+'\n🧾 No. Nota : '+no+'\n\n'+(dg.temuan?'📝 *Temuan:*\n'+dg.temuan+'\n\n':'')+
+   (st.length?'🛠️ *Rencana tindakan (bertahap):*\n'+st.map(function(x,k){return'*Tahap '+(k+1)+'*  '+x.t+'\n      💰 *'+rp(x.est)+'*';}).join('\n')+'\n\nBiaya sudah termasuk sparepart dan jasa. Tahap berikutnya hanya kami kerjakan bila tahap sebelumnya belum berhasil dan Bapak/Ibu setuju.\n\n✅ Mohon balas *SETUJU* (atau sebutkan tahap yang disetujui). Bila ada pertanyaan atau ingin menyesuaikan biaya, silakan sampaikan lebih dulu.':'Rincian tindakan dan biaya akan kami sampaikan segera.')+F;}
+ if(type==='konfirmasi')return H+'💬 *KONFIRMASI PERBAIKAN*\n📱 '+dev+'\n🧾 No. Nota : '+no+'\n\n*Rincian pekerjaan*\n'+itemL(t)+'\n\n'+card(['💰 Total biaya : *'+rp(c.total)+'*'])+'\n\n✅ Bila Bapak/Ibu menyetujui, mohon balas *SETUJU* agar perbaikan segera kami proses. Bila ada keberatan, kami siap menjelaskan terlebih dahulu.'+F;
+ if(type==='selesai')return H+'✅ *UNIT SUDAH SELESAI*\n📱 '+dev+'\n\n'+card(['🧾 No. Nota : '+no,'💰 Total biaya : *'+rp(c.total)+'*','💳 Pembayaran : '+t.pay,+t.warrantyDays>0?'🛡️ Garansi : '+t.warrantyDays+' hari'+(w&&w.started?' (s.d. '+fdate(w.until)+')':''):''])+'\n\nUnit dapat diambil di toko kami pada jam operasional ('+T3.buka+' – '+T3.tutup+', '+T3.hariKerja+').\nMohon membawa nota saat pengambilan.\n\n'+holdLine()+'\n\n'+thanks()+F;
+ if(type==='garansi'){
+  if(!(+t.warrantyDays>0))return H+'🛡️ *INFORMASI GARANSI*\n🧾 No. Nota : '+no+'\n\nPekerjaan pada nota ini tidak disertai garansi. Apabila ada yang ingin ditanyakan, silakan hubungi kami.'+F;
+  return H+'🛡️ *INFORMASI GARANSI*\n📱 '+dev+'\n\n'+card(['🧾 No. Nota : '+no,'⏳ Masa garansi : '+t.warrantyDays+' hari',w&&w.started?'📅 Berlaku sampai : '+fdate(w.until):''])+'\n\n📋 *Ketentuan garansi:*\n'+(cfg.terms||'-')+'\n\nBila ada kendala, silakan bawa unit beserta nota ini ke toko kami.'+F;}
+ if(type==='ingat'){var n3=t.doneDate?diffDays(t.doneDate,iso(new Date())):0,lv=idleLevel(n3)||1;
+  var bd='⏰ *PENGINGAT PENGAMBILAN UNIT*\n📱 '+dev+'\n\n'+card(['🧾 No. Nota : '+no,'💰 Total biaya : *'+rp(c.total)+'*','📅 Selesai sejak : '+fdate(t.doneDate||t.date)+' ('+n3+' hari lalu)'])+'\n\n';
+  if(lv===1)bd+='Unit Anda sudah selesai dan menunggu untuk diambil. Apabila berkenan, mohon diambil pada jam operasional kami ('+T3.buka+' – '+T3.tutup+', '+T3.hariKerja+'). Mohon membawa nota saat pengambilan.';
+  else if(lv===2)bd+='Demi keamanan unit dan keterbatasan tempat penyimpanan, kami berterima kasih bila unit dapat segera diambil pada jam operasional ('+T3.buka+' – '+T3.tutup+', '+T3.hariKerja+'). Bila ada kendala waktu atau pembayaran, silakan kabari kami agar kami bantu mengatur jadwalnya.';
+  else bd+='Ini pengingat ketiga dari kami. '+(cfg.storeTerms?cfg.storeTerms+' ':'')+'Mohon segera menghubungi kami agar unit dapat diambil atau dijadwalkan pengambilannya.';
+  return H+bd+'\n\n'+holdLine()+'\n\n'+thanks()+F;}
+ if(type==='lacak')return H+'📍 *PANTAU STATUS UNIT*\n📱 '+dev+'\n🧾 No. Nota : '+no+'\n\nGunakan tautan berikut untuk memantau status unit Anda kapan saja tanpa perlu menghubungi kami:\n'+(trkLink(t)||'(tautan tersedia setelah aplikasi terhubung ke Google Sheets)')+'\n\nHalaman ini hanya menampilkan status pengerjaan.\n\n'+thanks()+F;
+ return H+'❌ *PENGERJAAN DIBATALKAN*\n📱 '+dev+'\n🧾 No. Nota : '+no+(t.cancelReason?'\n📝 Alasan : '+t.cancelReason:'')+'\n\nTerima kasih atas pengertian Bapak/Ibu 🙏'+F;}
+
+/* ===== v10.8: ubah nama & No. HP pelanggan di nota ===== */
+function chgCust(id){
+ var t=findTx(id);if(!t||isTech())return;
+ var n=prompt('Nama pelanggan:',t.customer||'');if(n===null)return;
+ var p=prompt('No. HP / WhatsApp pelanggan:',t.phone||'');if(p===null)return;
+ n=n.trim();p=p.trim();if(!n){toast('Nama tidak boleh kosong.');return;}
+ var old=(t.customer||'-')+' / '+(t.phone||'-');
+ t.customer=n;t.phone=p;put('tx',t);logAct('Ubah data pelanggan',t.no+': '+old+' → '+n+' / '+p);
+ render();toast('Data pelanggan diperbarui.');}
+function trkLine(t){var l=trkLink(t);return l?'\n\n📍 *Pantau status unit Anda kapan saja:*\n'+l:'';}
 
 /* ================= v8: stok, foto, pelacakan, pengingat, absensi, target, grafik, laporan, cadangan, aktivitas ================= */
 var ABSL={hadir:'Hadir',telat:'Telat',izin:'Izin',sakit:'Sakit',alpa:'Alpa',libur:'Libur'};
@@ -3083,7 +3120,7 @@ function trkCode(){var A='abcdfghjkmnpqrstuvwxyz23456789',s='',b=new Uint8Array(
 function scriptId(){var m=/\/macros\/s\/([^\/]+)\/exec/.exec(SYNC.url||'');return m?m[1]:'';}
 function trkLink(t){var id=scriptId();if(!id||!t||!t.trk)return'';return location.origin+location.pathname.replace(/[^\/]*$/,'')+'lacak.html?s='+id+'&c='+t.trk;}
 function ensureTrk(t){if(t&&!t.trk&&canWrite()&&isActive(t)){t.trk=trkCode();put('tx',t);}}
-function trkLine(t){var l=trkLink(t);return l?'\n\nPantau status unit Anda kapan saja (tanpa perlu menghubungi kami):\n'+l:'';}
+function trkLine0(t){var l=trkLink(t);return l?'\n\nPantau status unit Anda kapan saja (tanpa perlu menghubungi kami):\n'+l:'';}
 function trkBox(t){
  if(!isActive(t)||!canWrite())return'';
  var l=trkLink(t);
