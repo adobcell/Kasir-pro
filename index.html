@@ -251,9 +251,9 @@ var ROLE={admin:'Admin Depan (Lv.1)',interface:'Teknisi Interface (Lv.2)',expert
 var STAT=['Diterima','Dikerjakan','Menunggu konfirmasi','Selesai','Diambil'];
 var STLBL={'Diterima':'Diterima / Cek','Dikerjakan':'Dikerjakan','Menunggu konfirmasi':'Menunggu konfirmasi','Selesai':'Selesai','Diambil':'Diambil','Dibatalkan':'Dibatalkan'};
 var PROSES=['Diterima','Dikerjakan','Menunggu konfirmasi'];
-var WARRS=[0,7,14,30,60,90],PAYS=['Tunai','Transfer','QRIS'];
+var WARRS=[0,7,14,30,60,90],PAYS=['Tunai','Transfer','QRIS','Belum bayar'];
 var STMSG={'Diterima':'terima','Dikerjakan':'proses','Menunggu konfirmasi':'konfirmasi','Selesai':'selesai','Diambil':'garansi'};
-var MSGS=[['terima','Bukti penerimaan unit'],['proses','Unit sedang dikerjakan'],['diag','Hasil cek & minta persetujuan tahap'],['konfirmasi','Minta persetujuan biaya'],['selesai','Unit selesai, siap diambil'],['ingat','Pengingat unit belum diambil'],['lacak','Tautan pelacakan unit'],['garansi','Info garansi'],['batal','Pemberitahuan pembatalan']];
+var MSGS=[['terima','Bukti penerimaan unit'],['proses','Unit sedang dikerjakan'],['diag','Hasil cek & minta persetujuan tahap'],['konfirmasi','Minta persetujuan biaya'],['selesai','Unit selesai, siap diambil'],['tagih','Tagihan / kekurangan pembayaran'],['ingat','Pengingat unit belum diambil'],['lacak','Tautan pelacakan unit'],['garansi','Info garansi'],['batal','Pemberitahuan pembatalan']];
 var PINOLD='',tbD={pin:'',ask:null};
 var kasD={staff:'',kind:'kasbon',date:'',amount:'',note:'',pin:'',armed:null};
 function kasBal(sid){var b=0;kass.forEach(function(k){if(k.staffId!==sid)return;b+=(k.kind==='potong'?-1:1)*(+k.amount||0);});return b;}
@@ -615,7 +615,7 @@ function notaText(t,o){
  if(t.lockType&&t.lockType!=='none')L=L.concat(kvT('Kunci',lockLabel(t),W));
  L.push(dash,'RINCIAN');
  (t.items||[]).forEach(function(i){var q=+i.qty||1;L=L.concat(wrap(i.name,W));L.push(lr('  '+q+' x '+nm(i.price),nm(q*(+i.price||0)),W));});
- L.push(eq,lr('TOTAL',rp(c.total),W),lr('Bayar',t.pay,W),eq);
+ L.push(eq,lr('TOTAL',rp(c.total),W),lr('Bayar',t.pay,W));if(isActive(t)&&(Array.isArray(t.payments)||t.pay==='Belum bayar')&&owing(t)>0){L.push(lr('Dibayar',rp(paidAmt(t)),W),lr('SISA TAGIHAN',rp(owing(t)),W));}L.push(eq);
  if(+t.warrantyDays>0){L=L.concat(ctr('** GARANSI '+t.warrantyDays+' HARI **',W));L=L.concat(ctr('Berlaku sejak pekerjaan selesai.',W));if(cfg.terms)L=L.concat(wrap(cfg.terms,W));L.push(dash);}
  if(t.signature)L.push('TTD pelanggan: tercatat digital');
  L=L.concat(wrap(HOLDNOTE,W));L=L.concat(ctr('Terima kasih atas kepercayaan Anda',W));L=L.concat(ctr('Simpan nota ini untuk pengambilan unit.',W));L.push('','');
@@ -668,6 +668,7 @@ function drawNota0(t){
  solid(2);setF('800',18,DISP);x.textAlign='left';x.fillText('TOTAL',M,y+fs(5));
  setF('700',24,MONO);x.textAlign='right';x.fillText('Rp '+nm(c.total),W-M,y);y+=fs(36);
  setF('700',15,SANS);x.textAlign='left';x.fillText('Pembayaran',M,y);setF('800',15,SANS);x.textAlign='right';x.fillText(t.pay||'-',W-M,y);y+=fs(22);
+ if(isActive(t)&&(Array.isArray(t.payments)||t.pay==='Belum bayar')&&owing(t)>0){setF('700',15,SANS);x.textAlign='left';x.fillText('Dibayar',M,y);x.textAlign='right';x.fillText('Rp '+nm(paidAmt(t)),W-M,y);y+=fs(22);setF('800',16,DISP);x.textAlign='left';x.fillText('SISA TAGIHAN',M,y);x.textAlign='right';x.fillText('Rp '+nm(owing(t)),W-M,y);y+=fs(26);}
  solid(2);
  if(+t.warrantyDays>0){var y0=y;y+=8;cen('GARANSI '+t.warrantyDays+' HARI','800',12,DISP,16,6);cen('Berlaku sejak pekerjaan selesai','600',10,SANS,13,6);
   if(cfg.terms)cen(cfg.terms,'600',10,SANS,13,6);y+=6;x.lineWidth=2;x.strokeRect(M,y0,CW,y-y0);y+=14;}
@@ -682,7 +683,7 @@ function drawNota0(t){
  var out=document.createElement('canvas');out.width=W;out.height=Math.min(H,Math.ceil(y)+22);
  var ox=out.getContext('2d');ox.fillStyle='#fff';ox.fillRect(0,0,out.width,out.height);ox.drawImage(cv,0,0);return out;}
 function notaImgURL(t){
- var key=JSON.stringify([t.id,t.kondisi,t.fm,t.items,t.pay,t.warrantyDays,t.no,t.techId,t.signature?t.signature.length:0,PREFS.paper,cfg.shop,cfg.addr,cfg.phone,cfg.terms,t.trk,SYNC.url]);
+ var key=JSON.stringify([t.id,t.kondisi,t.fm,t.items,t.pay,t.payments,t.warrantyDays,t.no,t.techId,t.signature?t.signature.length:0,PREFS.paper,cfg.shop,cfg.addr,cfg.phone,cfg.terms,t.trk,SYNC.url]);
  if(imgCache.key===key)return imgCache.url;
  try{var u=drawNota(t).toDataURL('image/png');imgCache={key:key,url:u};return u;}catch(e){return'';}}
 function rasterBytes(cv){
@@ -943,7 +944,7 @@ function detail(t){
  if(canc)h+='<div class="box"><strong class="neg">Nota dibatalkan'+(t.cancelAt?' pada '+fdate(t.cancelAt):'')+'</strong>'+(t.cancelReason?'<span class="small">Alasan: '+esc(t.cancelReason)+'</span>':'')+'<span class="muted small">Tidak masuk omzet dan bagi hasil.</span></div>';
  else{
   h+='<div class="box"><h3>Pembayaran &amp; garansi</h3><div><div class="small muted" style="margin-bottom:4px">Metode pembayaran</div><div class="seg">'+PAYS.map(function(p){return'<button data-act="set-pay" data-v="'+id+'" data-p="'+p+'" aria-pressed="'+(t.pay===p)+'">'+p+'</button>';}).join('')+'</div></div>'+
-  '<div><div class="small muted" style="margin-bottom:4px">Masa garansi</div><div class="chips">'+WARRS.map(function(n){return'<button class="chip" data-act="set-warr" data-v="'+id+'" data-n="'+n+'" aria-pressed="'+((+t.warrantyDays||0)===n)+'">'+(n?n+' hari':'Tanpa garansi')+'</button>';}).join('')+'</div><span class="muted small">Pilihan langsung tersimpan otomatis. Garansi mulai berjalan saat status Selesai.</span></div></div>'+
+  payBox(t)+'<div><div class="small muted" style="margin-bottom:4px">Masa garansi</div><div class="chips">'+WARRS.map(function(n){return'<button class="chip" data-act="set-warr" data-v="'+id+'" data-n="'+n+'" aria-pressed="'+((+t.warrantyDays||0)===n)+'">'+(n?n+' hari':'Tanpa garansi')+'</button>';}).join('')+'</div><span class="muted small">Pilihan langsung tersimpan otomatis. Garansi mulai berjalan saat status Selesai.</span></div></div>'+
   '<div><h3 style="margin-bottom:6px">Status pengerjaan</h3><div class="chips">'+STAT.map(function(s){return'<button class="chip" data-act="set-status" data-v="'+id+'" data-s="'+s+'" aria-pressed="'+(stt===s)+'">'+esc(STLBL[s]||s)+'</button>';}).join('')+'</div><span class="muted small">Status langsung tersimpan otomatis.</span></div>';}
  var msg=msgText(t,msgT);
  h+='<div class="box"><h3>Hubungi pelanggan</h3><select id="m-type" data-m="1">'+MSGS.map(function(m){return'<option value="'+m[0]+'"'+(msgT===m[0]?' selected':'')+'>'+m[1]+'</option>';}).join('')+'</select><pre class="nota wrapit">'+esc(msg)+'</pre><div class="row"><button class="btn sm pri" data-act="copy-msg" data-v="'+id+'">Salin pesan</button><a class="btn sm" href="'+waLink(t,msg)+'" target="_blank" rel="noopener">Kirim lewat WhatsApp</a></div>'+(t.phone?'':'<span class="muted small">Nomor HP belum diisi.</span>')+'</div>';
@@ -970,13 +971,14 @@ function vNota(){
  if(flt==='hari')L=all.filter(function(t){return t.date===day||(isActive(t)&&isFin(t)&&finDate(t)===day)||t.pickDate===day||(!isActive(t)&&cancelDate(t)===day);});
  else if(flt==='proses')L=all.filter(isProc);
  else if(flt==='tunggu')L=all.filter(function(t){return statusOf(t)==='Selesai';});
+ else if(flt==='utang')L=all.filter(isDebt);
  else if(flt==='garansi')L=all.filter(function(t){var w=warr(t);return w&&w.started&&w.active;});
  else if(flt==='batal')L=all.filter(function(t){return !isActive(t)&&inM(cancelDate(t),month);});
  else L=all.filter(function(t){return inM(t.date,month);});
  if(flt==='garansi')L.sort(function(a,b){return warr(a).until.localeCompare(warr(b).until);});
  else L.sort(function(a,b){return(b.ts||'').localeCompare(a.ts||'');});
- var chips=[['hari','Harian'],['bulan','Bulanan'],['proses','Dalam proses'],['tunggu','Belum diambil'],['garansi','Garansi aktif'],['batal','Dibatalkan']];
- h+='<section class="card stack"><div class="chips">'+chips.map(function(c){return'<button class="chip" data-act="flt" data-v="'+c[0]+'" aria-pressed="'+(flt===c[0])+'">'+c[1]+'</button>';}).join('')+'</div>';
+ var chips=[['hari','Harian'],['bulan','Bulanan'],['proses','Dalam proses'],['tunggu','Belum diambil'],['utang','Belum lunas'+(debtN()?' ('+debtN()+')':'')],['garansi','Garansi aktif'],['batal','Dibatalkan']];
+ h+=debtCard();h+='<section class="card stack"><div class="chips">'+chips.map(function(c){return'<button class="chip" data-act="flt" data-v="'+c[0]+'" aria-pressed="'+(flt===c[0])+'">'+c[1]+'</button>';}).join('')+'</div>';
  if(flt==='hari')h+='<div class="row sb"><div class="row"><button class="btn sm" data-act="dnav" data-v="-1">‹</button><input type="date" id="dn" data-dn="1" value="'+day+'" style="width:auto"><button class="btn sm" data-act="dnav" data-v="1">›</button></div><button class="btn sm'+(day===today?'':' pri')+'" data-act="dtoday">Hari ini</button></div><strong>'+HARI[pd(day).getDay()]+', '+fdate(day)+(day===today?' · Hari ini':'')+'</strong>';
  else h+='<span class="muted small">'+(flt==='proses'||flt==='garansi'||flt==='tunggu'?'Semua tanggal.':'Bulan '+mlabel(month)+'.')+'</span>';
  h+='</section>';
@@ -1584,10 +1586,11 @@ function act(a,el){
   if(s==='Selesai'||s==='Diambil'){if(!t.doneDate)t.doneDate=td;}
   if(s==='Diambil'){if(!t.pickDate)t.pickDate=td;}else delete t.pickDate;
   if(PROSES.indexOf(s)>=0)delete t.doneDate;
-  msgT=STMSG[s]||msgT;put('tx',t);logAct('Status nota',t.no+' → '+(STLBL[s]||s));render();toast('Status tersimpan: "'+(STLBL[s]||s)+'".');}
+  msgT=STMSG[s]||msgT;if(s==='Diambil'&&pickCheck(t))msgT='tagih';put('tx',t);logAct('Status nota',t.no+' → '+(STLBL[s]||s));render();toast('Status tersimpan: "'+(STLBL[s]||s)+'".');}
  else if(a==='set-pay'){t=findTx(v);if(!t)return;t.pay=el.dataset.p||'Tunai';put('tx',t);logAct('Pembayaran nota',t.no+' · '+t.pay);render();toast('Pembayaran tersimpan: '+t.pay+'.');}
  else if(a==='set-warr'){t=findTx(v);if(!t)return;t.warrantyDays=+el.dataset.n||0;put('tx',t);logAct('Garansi nota',t.no+' · '+(t.warrantyDays?t.warrantyDays+' hari':'tanpa garansi'));render();toast(t.warrantyDays?'Garansi tersimpan: '+t.warrantyDays+' hari.':'Garansi dihapus dari nota ini.');}
  else if(a==='chg-cust'){chgCust(v);}
+ else if(/^pay-/.test(a)){payAct(a,v,el);}
  else if(a==='ef-add-x'){if(isAdmin()&&editD.f){editD.f.extra.push({k:'',v:''});render();}}
  else if(a==='ef-rm-x'){if(isAdmin()&&editD.f){editD.f.extra.splice(+el.dataset.i,1);render();}}
  else if(a==='ask-edit'){t=findTx(v);if(!t||!isActive(t)||!isAdmin())return;editD={id:v,items:JSON.parse(JSON.stringify(t.items||[])),pin:''};render();}
@@ -2871,7 +2874,7 @@ function frontTodo(){
  if(!isFront())return'';
  var A=txs.filter(isActive),td=iso(new Date());
  var n1=A.filter(function(t){return statusOf(t)==='Diterima';}).length,n2=A.filter(function(t){return statusOf(t)==='Menunggu konfirmasi';}).length,n3=A.filter(function(t){return statusOf(t)==='Selesai';}).length,n4=stkLow().length,self=absDoc(td,absSelfId());
- var R=[['Unit belum dicek / belum ada biaya',n1,'proses'],['Menunggu persetujuan pelanggan',n2,'proses'],['Selesai, belum diambil (follow-up)',n3,'tunggu']];
+ var R=[['Unit belum dicek / belum ada biaya',n1,'proses'],['Menunggu persetujuan pelanggan',n2,'proses'],['Selesai, belum diambil (follow-up)',n3,'tunggu'],['Belum lunas (tagih pelanggan)',debtN(),'utang']];
  var h='<section class="card stack"><h2>Tugas hari ini</h2>'+R.map(function(r){return'<div class="row sb"><span class="small">'+r[0]+'</span><button class="btn sm'+(r[1]?' pri':'')+'" data-act="ft-go" data-v="'+r[2]+'">'+r[1]+'</button></div>';}).join('')+
   '<div class="row sb"><span class="small">Stok menipis (lapor Owner)</span><button class="btn sm'+(n4?' pri':'')+'" data-act="ft-tab" data-v="stok">'+n4+'</button></div>'+
   '<div class="row sb"><span class="small">Absen hari ini</span>'+(self&&self.in?'<span class="badge good">Sudah absen '+esc(self.in)+'</span>':'<button class="btn sm pri" data-act="ft-tab" data-v="absen">Belum absen</button>')+'</div></section>';
@@ -2947,7 +2950,7 @@ function payRows(t){return['💳 Pembayaran : '+(t.pay||'Tunai'),'📌 Status : 
 function payTo(t){if(isPaid(t)||(t.pay||'Tunai')==='Tunai')return'';
  return'\n\n🏦 *Tujuan pembayaran ('+t.pay+'):*\n'+(cfg.payInfo&&String(cfg.payInfo).trim()?String(cfg.payInfo).trim():'Silakan tanyakan kepada kami.')+'\nMohon kirim bukti pembayaran ke WhatsApp ini.';}
 function thanks(){return'Terima kasih atas kepercayaan Bapak/Ibu 🙏';}
-function msgText(t,type){
+function msgText1(t,type){
  var c=calc(t),w=warr(t),dev=unitDesc(t),H=waHead(t),F=waFoot(),no=t.no,T3=TT(),m;
  var card=function(rows){return LN+'\n'+rows.filter(Boolean).join('\n')+'\n'+LN;};
  if(type==='terima'){var has=(t.items||[]).length;
@@ -3016,6 +3019,82 @@ function editPanel(t){
   (f.extra||[]).map(function(x,i){return'<div class="grid"><label class="f">Nama kolom<input data-ef="x'+i+'k" value="'+esc(x.k)+'" autocomplete="off"></label><label class="f">Isi<input data-ef="x'+i+'v" value="'+esc(x.v)+'" autocomplete="off"></label><button class="linkbtn" data-act="ef-rm-x" data-i="'+i+'">Hapus kolom</button></div>';}).join('')+
   '<div><button class="btn sm" data-act="ef-add-x">+ Tambah kolom</button></div><strong class="small">Biaya &amp; item</strong></div>';
  return h+editPanel0(t);}
+
+/* ===== v10.13: Belum bayar, kurang bayar, piutang ===== */
+var payD={id:null,amt:'',method:'Tunai',note:'',due:''};
+function paidAmt(t){
+ if(Array.isArray(t.payments))return t.payments.reduce(function(s,p){return s+(+p.amt||0);},0);
+ if(t.pay==='Belum bayar')return 0;
+ return statusOf(t)==='Diambil'?calc(t).total:0;}
+function owing(t){return Math.max(0,calc(t).total-paidAmt(t));}
+function isDebt(t){return isActive(t)&&statusOf(t)==='Diambil'&&owing(t)>0;}
+function debtN(){return txs.filter(isDebt).length;}
+function debtSum(){return txs.filter(isDebt).reduce(function(s,t){return s+owing(t);},0);}
+function pickCheck(t){
+ if(Array.isArray(t.payments)||t.pay==='Belum bayar')return owing(t)>0;
+ var ok=confirm('Unit diserahkan ke pelanggan.\n\nApakah sudah dibayar LUNAS ('+rp(calc(t).total)+')?\n\nOK = Lunas\nBatal = Belum bayar / masih kurang (dicatat sebagai tagihan)');
+ if(ok)return false;
+ t.pay='Belum bayar';t.payments=[];return true;}
+function daysSince(d){return d?Math.max(0,diffDays(d,iso(new Date()))):0;}
+function debtCard(){
+ var n=debtN();if(!n||flt==='utang')return'';
+ return'<section class="card" style="border-color:var(--warn,#C98A00)"><div class="row sb"><div><strong>⚠️ '+n+' nota belum lunas</strong><div class="small muted">Total tagihan '+rp(debtSum())+'</div></div><button class="btn sm pri" data-act="flt" data-v="utang">Lihat</button></div></section>';}
+function payStatusBadge(t){
+ if(!isActive(t))return'';var pd=paidAmt(t),ow=owing(t);
+ if(statusOf(t)==='Diambil')return ow>0?'<span class="badge bad">'+(pd>0?'Kurang bayar':'Belum bayar')+' · '+rp(ow)+'</span>':'<span class="badge good">Lunas</span>';
+ return pd>0?'<span class="badge warn">DP '+rp(pd)+'</span>':'';}
+function payBox(t){
+ if(!isActive(t))return'';
+ var c=calc(t).total,pd=paidAmt(t),ow=Math.max(0,c-pd),pm=(t.payments||[]);
+ var h='<div class="box"><h3>Tagihan &amp; pembayaran '+payStatusBadge(t)+'</h3><div class="ledger"><div class="ln"><span>Total nota</span><span class="num">'+rp(c)+'</span></div><div class="ln"><span>Sudah dibayar</span><span class="num">'+rp(pd)+'</span></div><div class="ln tot"><span>Sisa tagihan</span><span class="num'+(ow>0&&statusOf(t)==='Diambil'?' neg':'')+'">'+rp(ow)+'</span></div></div>';
+ if(pm.length)h+='<div class="stack">'+pm.map(function(p,i){return'<div class="row sb"><span class="small">'+fdate(p.date)+' · '+esc(p.method||'-')+(p.note?' · '+esc(p.note):'')+'</span><span class="row"><span class="num small">'+rp(p.amt)+'</span>'+(isAdmin()?'<button class="linkbtn" data-act="pay-del" data-v="'+t.id+'" data-i="'+i+'">Hapus</button>':'')+'</span></div>';}).join('')+'</div>';
+ if(t.dueDate&&ow>0)h+='<span class="small">📅 Janji bayar sisa: <b>'+fdate(t.dueDate)+'</b></span>';
+ if(payD.id===t.id){
+  h+='<div class="grid"><label class="f">Jumlah dibayar'+moneyBox('id="pd-amt" data-pd="amt"',payD.amt)+'</label>'+
+   '<label class="f">Metode<select data-pd="method">'+['Tunai','Transfer','QRIS'].map(function(m){return'<option'+(payD.method===m?' selected':'')+'>'+m+'</option>';}).join('')+'</select></label>'+
+   '<label class="f">Catatan (opsional)<input data-pd="note" value="'+esc(payD.note)+'" placeholder="mis. DP, cicilan 1" autocomplete="off"></label>'+
+   '<label class="f">Janji bayar sisa (opsional)<input type="date" data-pd="due" value="'+esc(payD.due)+'"></label></div>'+
+   '<div class="row"><button class="btn pri sm" data-act="pay-save" data-v="'+t.id+'">💾 Simpan pembayaran</button><button class="btn sm" data-act="pay-close">Batal</button></div>';
+ }else if(ow>0){
+  h+='<div class="row"><button class="btn pri sm" data-act="pay-open" data-v="'+t.id+'">+ Catat pembayaran</button><button class="btn sm" data-act="pay-full" data-v="'+t.id+'">Lunaskan sisa</button>'+(statusOf(t)==='Diambil'?'<button class="btn sm" data-act="pay-msg" data-v="'+t.id+'">Pesan tagihan</button>':'')+'</div>';
+ }
+ return h+'</div>';}
+function payAct(a,v,el){
+ var t=findTx(v||payD.id);
+ if(a==='pay-close'){payD={id:null,amt:'',method:'Tunai',note:'',due:''};render();return;}
+ if(!t||!isActive(t)||isTech())return;
+ if(a==='pay-msg'){msgT='tagih';render();return;}
+ if(a==='pay-open'){payD={id:t.id,amt:String(owing(t)||''),method:(t.pay&&t.pay!=='Belum bayar')?t.pay:'Tunai',note:'',due:t.dueDate||''};render();return;}
+ if(a==='pay-del'){if(!isAdmin())return;var i=+el.dataset.i,arr=Array.isArray(t.payments)?t.payments.slice():[];if(!arr[i])return;
+  if(!confirm('Hapus catatan pembayaran '+rp(arr[i].amt)+'?'))return;var old=arr.splice(i,1)[0];t.payments=arr;put('tx',t);logAct('Hapus pembayaran',t.no+' · '+rp(old.amt));render();toast('Catatan pembayaran dihapus.');return;}
+ var amt,method,note='',due='';
+ if(a==='pay-full'){amt=owing(t);method=(t.pay&&t.pay!=='Belum bayar')?t.pay:'Tunai';}
+ else if(a==='pay-save'){amt=Math.round(num(String(payD.amt).replace(/\D/g,'')));method=payD.method||'Tunai';note=String(payD.note||'').trim();due=payD.due||'';}
+ else return;
+ if(!(amt>0)){toast('Isi jumlah pembayaran.');return;}
+ var ow=owing(t);if(amt>ow){toast('Jumlah melebihi sisa tagihan ('+rp(ow)+').');return;}
+ var base=Array.isArray(t.payments)?t.payments.slice():(paidAmt(t)>0?[{date:payDate(t),amt:paidAmt(t),method:t.pay,note:'Pembayaran awal'}]:[]);
+ base.push({date:iso(new Date()),amt:amt,method:method,note:note,by:(AUTH&&AUTH.name)||''});
+ t.payments=base;
+ if(owing(t)===0){t.pay=method;delete t.dueDate;}else{if(due)t.dueDate=due;if(t.pay==='Belum bayar'&&false)t.pay=method;}
+ put('tx',t);logAct('Pembayaran',t.no+' · +'+rp(amt)+' ('+method+')'+' · sisa '+rp(owing(t)));
+ payD={id:null,amt:'',method:'Tunai',note:'',due:''};
+ if(owing(t)===0&&statusOf(t)==='Diambil')msgT=STMSG['Diambil']||'garansi';
+ render();toast(owing(t)===0?'Lunas. Pembayaran tercatat.':'Pembayaran tercatat. Sisa '+rp(owing(t)));}
+function payRows(t){
+ var pd=paidAmt(t),ow=owing(t),st;
+ if(statusOf(t)==='Diambil')st=ow===0?'✅ Lunas':(pd>0?'⚠️ Kurang bayar (sudah '+rp(pd)+', sisa *'+rp(ow)+'*)':'⚠️ Belum dibayar (tagihan *'+rp(ow)+'*)');
+ else st=pd>0?'💵 DP diterima '+rp(pd)+' (sisa '+rp(ow)+')':'⏳ Belum dibayar (dibayar saat pengambilan unit)';
+ return['💳 Pembayaran : '+(t.pay||'Tunai'),'📌 Status : '+st];}
+function payTo(t){var pi=cfg.payInfo?String(cfg.payInfo).trim():'';if(owing(t)===0||(t.pay||'Tunai')==='Tunai'||!pi)return'';
+ return'\n\n🏦 *Tujuan pembayaran:*\n'+pi+'\nMohon kirim bukti pembayaran ke WhatsApp ini.';}
+function msgText(t,type){
+ if(type!=='tagih')return msgText1(t,type);
+ var c=calc(t),pd=paidAmt(t),ow=owing(t),H=waHead(t),dev=unitDesc(t),n=daysSince(t.pickDate||t.doneDate);
+ var rows=['🧾 No. Nota : '+t.no,'💰 Total biaya : '+rp(c.total),'✅ Sudah dibayar : '+rp(pd),'⚠️ Sisa tagihan : *'+rp(ow)+'*'];
+ if(t.dueDate)rows.push('📅 Janji bayar : '+fdate(t.dueDate));
+ return H+'🧾 *TAGIHAN PEMBAYARAN*\n📱 '+dev+'\n\n'+LN+'\n'+rows.join('\n')+'\n'+LN+payTo(t)+
+  '\n\nTerima kasih telah mempercayakan perangkat Anda kepada kami. Kami menginformasikan bahwa masih terdapat sisa pembayaran atas pekerjaan di atas'+(n>0?' (unit diambil '+n+' hari lalu)':'')+'. Mohon kesediaan Bapak/Ibu untuk melunasinya'+(t.dueDate?' sesuai janji pada '+fdate(t.dueDate):' secepatnya')+'.\n\nBila ada kendala, silakan kabari kami agar kami bantu mengatur jadwal pembayarannya. Mohon abaikan pesan ini bila pembayaran sudah dilakukan.\n\n'+thanks()+waFoot();}
 
 /* ================= v8: stok, foto, pelacakan, pengingat, absensi, target, grafik, laporan, cadangan, aktivitas ================= */
 var ABSL={hadir:'Hadir',telat:'Telat',izin:'Izin',sakit:'Sakit',alpa:'Alpa',libur:'Libur'};
@@ -3436,6 +3515,7 @@ document.addEventListener('input',function(e){
  if(ds.lg){loginD[ds.lg]=el.value;return;}
  if(ds.u){if(!USR.form)USR.form=usrNewForm();USR.form[ds.u]=ds.u==='active'?(el.value==='1'):el.value;if(ds.u==='role'){if(el.value==='teknisi'&&!USR.form.staffId&&techs()[0])USR.form.staffId=techs()[0].id;render();}return;}
  if(!canWrite())return;
+ if(ds.pd!==undefined){payD[ds.pd]=ds.money!==undefined?String(moneyFix(el)):el.value;return;}
  if(ds.money!==undefined){
   var val=moneyFix(el);
   if(ds.dg!==undefined){dgSet(ds,val);return;}
