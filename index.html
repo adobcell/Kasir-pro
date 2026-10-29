@@ -1335,6 +1335,7 @@ function aturBody(){
   var ex=calc({items:[{type:'jasa',qty:1,price:260000}],share:30,fee:2}),ex2=calc({items:[{type:'jasa',qty:1,price:260000}],share:40,fee:2});
   h+='<section class="card stack"><h2>Toko</h2><div class="grid"><label class="f">Nama toko<input id="c-shop" data-c="shop" value="'+esc(cfg.shop)+'" autocomplete="off"></label><label class="f">Telepon / WA toko<input id="c-phone" type="tel" data-c="phone" value="'+esc(cfg.phone)+'" placeholder="08xxxxxxxxxx" autocomplete="off"></label></div>'+
   '<label class="f">Alamat<input id="c-addr" data-c="addr" value="'+esc(cfg.addr)+'" placeholder="Alamat untuk kepala nota" autocomplete="off"></label>'+
+  '<label class="f">Info pembayaran (rekening / QRIS)<textarea id="c-payInfo" data-c="payInfo" rows="3" placeholder="Contoh:\nBCA 1234567890 a.n. Nama Anda\nQRIS: tersedia di toko">'+esc(cfg.payInfo||'')+'</textarea><span class="small muted">Ikut tampil di pesan WhatsApp bila pelanggan membayar Transfer/QRIS.</span></label>'+
   '<label class="f">Garansi standar<select id="c-wd" data-c="warrantyDays">'+WARRS.map(function(n){return'<option value="'+n+'"'+(+cfg.warrantyDays===n?' selected':'')+'>'+(n?n+' hari':'Tanpa garansi')+'</option>';}).join('')+'</select></label>'+
   '<label class="f">Ketentuan garansi (dicetak di nota)<textarea id="c-terms" data-c="terms">'+esc(cfg.terms)+'</textarea></label></section>'+
   '<section class="card stack"><div class="row sb"><h2>Owner &amp; persetujuan</h2><span class="badge '+(cfg.ownerPinH?'good':'warn')+'">'+(cfg.ownerPinH?'PIN sudah diatur':'PIN belum diatur')+'</span></div>'+
@@ -2942,25 +2943,28 @@ function holdDays(){return +cfg.holdDays>0?+cfg.holdDays:30;}
 var HOLDNOTE='Sesuai ketentuan toko, unit yang tidak diambil lebih dari 30 hari bukan lagi menjadi tanggung jawab kami.';
 function holdLine(){return'📌 *Ketentuan pengambilan unit*\nSesuai ketentuan toko, unit yang tidak diambil lebih dari *'+holdDays()+' hari* bukan lagi menjadi tanggung jawab kami. Bila ada kendala, silakan kabari kami dan kami bantu atur jadwalnya.';}
 function itemL(t){return(t.items||[]).map(function(i){return'▪️ '+i.name+' ('+(+i.qty||1)+' × '+rp(i.price)+')';}).join('\n');}
+function payRows(t){return['💳 Pembayaran : '+(t.pay||'Tunai'),'📌 Status : '+(isPaid(t)?'✅ Lunas':'⏳ Belum dibayar (dibayar saat pengambilan unit)')];}
+function payTo(t){if(isPaid(t)||(t.pay||'Tunai')==='Tunai')return'';
+ return'\n\n🏦 *Tujuan pembayaran ('+t.pay+'):*\n'+(cfg.payInfo&&String(cfg.payInfo).trim()?String(cfg.payInfo).trim():'Silakan tanyakan kepada kami.')+'\nMohon kirim bukti pembayaran ke WhatsApp ini.';}
 function thanks(){return'Terima kasih atas kepercayaan Bapak/Ibu 🙏';}
 function msgText(t,type){
  var c=calc(t),w=warr(t),dev=unitDesc(t),H=waHead(t),F=waFoot(),no=t.no,T3=TT(),m;
  var card=function(rows){return LN+'\n'+rows.filter(Boolean).join('\n')+'\n'+LN;};
  if(type==='terima'){var has=(t.items||[]).length;
-  m=H+'📥 *UNIT DITERIMA*\n📱 '+dev+'\n\n'+card(['🧾 No. Nota : '+no,'📅 Tanggal : '+fdate(t.date),t.complaint?'🔧 Keluhan : '+t.complaint:''])+'\n\n'+
+  m=H+'📥 *UNIT DITERIMA*\n📱 '+dev+'\n\n'+card(['🧾 No. Nota : '+no,'📅 Tanggal : '+fdate(t.date),t.complaint?'🔧 Keluhan : '+t.complaint:''].concat(has?payRows(t):[]))+'\n\n'+
    (has?'*Rincian pekerjaan*\n'+itemL(t)+'\n\n💰 Estimasi biaya : *'+rp(c.total)+'*':'🔍 Unit kami periksa lebih dulu. Biaya kami sampaikan setelah pemeriksaan dan *baru dikerjakan setelah Bapak/Ibu setuju*.')+
    '\n\nPerkembangan akan kami kabari melalui WhatsApp ini.'+trkLine(t)+'\n\n'+thanks()+F;return m;}
  if(type==='proses')return H+'🔧 *UNIT SEDANG DIKERJAKAN*\n📱 '+dev+'\n\n'+card(['🧾 No. Nota : '+no,'👨‍🔧 Teknisi : '+techName(t.techId)])+'\n\nKami akan segera mengabari setelah pengerjaan selesai. Mohon kesabaran Bapak/Ibu.'+trkLine(t)+'\n\n'+thanks()+F;
  if(type==='diag'){var dg=t.diag||{},st=(dg.tahap||[]).filter(function(x){return String(x.t||'').trim()&&(+x.est||0)>0;});
   return H+'🔍 *HASIL PEMERIKSAAN*\n📱 '+dev+'\n🧾 No. Nota : '+no+'\n\n'+(dg.temuan?'📝 *Temuan:*\n'+dg.temuan+'\n\n':'')+
    (st.length?'🛠️ *Rencana tindakan (bertahap):*\n'+st.map(function(x,k){return'*Tahap '+(k+1)+'*  '+x.t+'\n      💰 *'+rp(x.est)+'*';}).join('\n')+'\n\nBiaya sudah termasuk sparepart dan jasa. Tahap berikutnya hanya kami kerjakan bila tahap sebelumnya belum berhasil dan Bapak/Ibu setuju.\n\n✅ Mohon balas *SETUJU* (atau sebutkan tahap yang disetujui). Bila ada pertanyaan atau ingin menyesuaikan biaya, silakan sampaikan lebih dulu.':'Rincian tindakan dan biaya akan kami sampaikan segera.')+F;}
- if(type==='konfirmasi')return H+'💬 *KONFIRMASI PERBAIKAN*\n📱 '+dev+'\n🧾 No. Nota : '+no+'\n\n*Rincian pekerjaan*\n'+itemL(t)+'\n\n'+card(['💰 Total biaya : *'+rp(c.total)+'*'])+'\n\n✅ Bila Bapak/Ibu menyetujui, mohon balas *SETUJU* agar perbaikan segera kami proses. Bila ada keberatan, kami siap menjelaskan terlebih dahulu.'+F;
- if(type==='selesai')return H+'✅ *UNIT SUDAH SELESAI*\n📱 '+dev+'\n\n'+card(['🧾 No. Nota : '+no,'💰 Total biaya : *'+rp(c.total)+'*','💳 Pembayaran : '+t.pay,+t.warrantyDays>0?'🛡️ Garansi : '+t.warrantyDays+' hari'+(w&&w.started?' (s.d. '+fdate(w.until)+')':''):''])+'\n\nUnit dapat diambil di toko kami pada jam operasional ('+T3.buka+' – '+T3.tutup+', '+T3.hariKerja+').\nMohon membawa nota saat pengambilan.\n\n'+holdLine()+'\n\n'+thanks()+F;
+ if(type==='konfirmasi')return H+'💬 *KONFIRMASI PERBAIKAN*\n📱 '+dev+'\n🧾 No. Nota : '+no+'\n\n*Rincian pekerjaan*\n'+itemL(t)+'\n\n'+card(['💰 Total biaya : *'+rp(c.total)+'*'].concat(payRows(t)))+payTo(t)+'\n\n✅ Bila Bapak/Ibu menyetujui, mohon balas *SETUJU* agar perbaikan segera kami proses. Bila ada keberatan, kami siap menjelaskan terlebih dahulu.'+F;
+ if(type==='selesai')return H+'✅ *UNIT SUDAH SELESAI*\n📱 '+dev+'\n\n'+card(['🧾 No. Nota : '+no,'💰 Total biaya : *'+rp(c.total)+'*'].concat(payRows(t)).concat([+t.warrantyDays>0?'🛡️ Garansi : '+t.warrantyDays+' hari'+(w&&w.started?' (s.d. '+fdate(w.until)+')':''):''])) +payTo(t)+'\n\nUnit dapat diambil di toko kami pada jam operasional ('+T3.buka+' – '+T3.tutup+', '+T3.hariKerja+').\nMohon membawa nota saat pengambilan.\n\n'+holdLine()+'\n\n'+thanks()+F;
  if(type==='garansi'){
   if(!(+t.warrantyDays>0))return H+'🛡️ *INFORMASI GARANSI*\n🧾 No. Nota : '+no+'\n\nPekerjaan pada nota ini tidak disertai garansi. Apabila ada yang ingin ditanyakan, silakan hubungi kami.'+F;
   return H+'🛡️ *INFORMASI GARANSI*\n📱 '+dev+'\n\n'+card(['🧾 No. Nota : '+no,'⏳ Masa garansi : '+t.warrantyDays+' hari',w&&w.started?'📅 Berlaku sampai : '+fdate(w.until):''])+'\n\n📋 *Ketentuan garansi:*\n'+(cfg.terms||'-')+'\n\nBila ada kendala, silakan bawa unit beserta nota ini ke toko kami.'+F;}
  if(type==='ingat'){var n3=t.doneDate?diffDays(t.doneDate,iso(new Date())):0,lv=idleLevel(n3)||1;
-  var bd='⏰ *PENGINGAT PENGAMBILAN UNIT*\n📱 '+dev+'\n\n'+card(['🧾 No. Nota : '+no,'💰 Total biaya : *'+rp(c.total)+'*','📅 Selesai sejak : '+fdate(t.doneDate||t.date)+' ('+n3+' hari lalu)'])+'\n\n';
+  var bd='⏰ *PENGINGAT PENGAMBILAN UNIT*\n📱 '+dev+'\n\n'+card(['🧾 No. Nota : '+no,'💰 Total biaya : *'+rp(c.total)+'*','📅 Selesai sejak : '+fdate(t.doneDate||t.date)+' ('+n3+' hari lalu)'].concat(payRows(t)))+payTo(t)+'\n\n';
   if(lv===1)bd+='Unit Anda sudah selesai dan menunggu untuk diambil. Apabila berkenan, mohon diambil pada jam operasional kami ('+T3.buka+' – '+T3.tutup+', '+T3.hariKerja+'). Mohon membawa nota saat pengambilan.';
   else if(lv===2)bd+='Demi keamanan unit dan keterbatasan tempat penyimpanan, kami berterima kasih bila unit dapat segera diambil pada jam operasional ('+T3.buka+' – '+T3.tutup+', '+T3.hariKerja+'). Bila ada kendala waktu atau pembayaran, silakan kabari kami agar kami bantu mengatur jadwalnya.';
   else bd+='Ini pengingat ketiga dari kami. '+(cfg.storeTerms?cfg.storeTerms+' ':'')+'Mohon segera menghubungi kami agar unit dapat diambil atau dijadwalkan pengambilannya.';
