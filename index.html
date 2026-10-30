@@ -263,11 +263,15 @@ var CLAIMRES=['Diperbaiki ulang','Komponen diganti',REFUND,'Ditolak (di luar ket
 var THEMES=[['hijau','Hijau Bengkel','#EBEFEA','#16211D','#0B7A5A'],['malam','Malam Hijau','#0F1613','#E6EEE9','#3DD6A3'],['samudra','Samudra','#E7EEF7','#0F2036','#0A5FD0'],['senja','Senja','#0D1322','#E9EDF8','#F2B544'],['mawar','Mawar','#F3ECF0','#2A1420','#B01E5B'],['kontras','Kontras Tinggi','#FFFFFF','#000000','#000000']];
 var SVC=['000018f0-0000-1000-8000-00805f9b34fb','0000ff00-0000-1000-8000-00805f9b34fb','e7810a71-73ae-499d-8c15-faa9aef0c3f2','49535343-fe7d-4ae5-8fa9-9fafd205e455','0000ffe0-0000-1000-8000-00805f9b34fb','0000fee7-0000-1000-8000-00805f9b34fb','00001101-0000-1000-8000-00805f9b34fb'];
 var RKH=['ID','Diperbarui','Dihapus','Periode','Unit Diambil','Omzet','Modal Sparepart','Laba Bersih Nota','Bagi Hasil Teknisi','Fee Unit Teknisi','Bonus Admin','Gaji Pokok Admin (bulanan)','Bonus Rajin (bulanan)','Pengeluaran Toko','Biaya Klaim/Refund','Laba Bersih Toko','Rincian Tim','Rincian Pengeluaran','Status Buku','DataJSON'];
+var HRKM=['ID','Diperbarui','Dihapus','Bulan','Unit Masuk','Unit Diambil','Selesai Belum Diambil','Dalam Proses','Dibatalkan','Omzet','Modal Sparepart','Laba Bersih Nota','Bagi Hasil Teknisi','Fee Unit Teknisi','Gaji Tim (pokok/harian)','Bonus Admin','Bonus Rajin','Pengeluaran Toko','Klaim/Refund','Laba Bersih Toko','Kas Masuk (dibayar)','Piutang Belum Lunas','Jumlah Nota Piutang','Status Buku','DataJSON'],
+ HRKT=['ID','Diperbarui','Dihapus','Bulan','Nama','Peran','Sistem Pendapatan','Hari Hadir','Telat','Izin','Sakit','Alpa','Tarif Harian','Gaji Harian (hari x tarif)','Gaji Pokok Bulanan','Unit Sukses Dikerjakan','Omzet Unit','Laba Bersih Unit','Bagi Hasil','Fee Unit','Bonus Admin','Bonus Rajin','Total Kotor','Kasbon Diambil','Potongan Kasbon','Total Diterima Bersih','Sisa Kasbon','Status Bayar','Rincian Unit','DataJSON'],
+ HRKP=['ID','Diperbarui','Dihapus','Tgl Masuk','No Nota','Pelanggan','No HP','Perangkat','Status Unit','Tgl Diambil','Total','Dibayar','Sisa Tagihan','Metode','Status Bayar','Janji Bayar','Umur Piutang (hari)','Riwayat Pembayaran','DataJSON'],
+ HRKA=['ID','Diperbarui','Dihapus','Tanggal','Hari','Karyawan','Status','Jam Masuk','Jam Pulang','Telat (menit)','Jarak Masuk (m)','Koordinat Masuk','Peta Masuk','Foto Masuk','Jarak Pulang (m)','Peta Pulang','Foto Pulang','Dicatat Oleh','DataJSON'];
 var HEAD={
  tx:['ID','Diperbarui','Dihapus','Tanggal','No Nota','Pelanggan','No HP','Perangkat','IMEI/SN','Keluhan','Teknisi','Status','Bayar','Rincian','Jasa','Sparepart','Modal Sparepart','Total','Komisi Teknisi','Bonus Admin','Bagian Toko','Garansi (hari)','Garansi Sampai','Jumlah Klaim','DataJSON'],
  exp:['ID','Diperbarui','Dihapus','Tanggal','Kategori','Keterangan','Jumlah','DataJSON'],
  kas:['ID','Diperbarui','Dihapus','Tanggal','Karyawan','Jenis','Jumlah','Catatan','DataJSON'],
- rkd:RKH,rkw:RKH,rkb:RKH,
+ rkd:RKH,rkw:RKH,rkb:RKH,rkm:HRKM,rkt:HRKT,rkp:HRKP,rka:HRKA,
  tb:['ID','Diperbarui','Dihapus','Tahun','Bulan','Status','Unit Diambil','Omzet','Laba Bersih','Bagi Hasil Teknisi','Gaji Pokok','Bonus Admin','Bonus Rajin','Pengeluaran','Biaya Klaim','Laba Bersih Toko','Saldo Kumulatif','Ditutup Pada','DataJSON'],
  cfg:['ID','Diperbarui','Dihapus','Nama','DataJSON'],
  stk:['ID','Diperbarui','Dihapus','Nama Sparepart','Satuan','Stok Masuk (total)','Terpakai','Sisa Stok','Minimum','Harga Beli','Harga Jual','Nilai Persediaan','Status','DataJSON'],
@@ -426,7 +430,7 @@ function rkSet(coll,doc){
  var k=coll+'/'+doc.id,old=DOCS[k],sig=JSON.stringify(doc);
  if(old&&!old.deleted){var o2=Object.assign({},old);delete o2.updated;if(JSON.stringify(o2)===sig)return;}
  doc.updated=Date.now();DOCS[k]=doc;persist(k);mark(k);}
-function pubRekap(){
+function pubRekap0(){
  if(!isAdmin())return;
  stkSync();
  var S=rkCompute(),keep={rkd:{},rkw:{},rkb:{}};
@@ -466,6 +470,7 @@ function rowFor(k,o){
   return base.concat([o.date,cell(o.no),cell(o.customer),cell(o.phone),cell(o.device),cell(o.imei),cell(o.complaint),techName(o.techId),statusOf(o)+refTag(o),o.pay,
    cell((o.items||[]).map(function(i){return i.name+' x'+(i.qty||1)+' @'+i.price;}).join('; ')),c.jasa,c.partRev,c.partCost,c.total,isFront()?'':(isPaid(o)?Math.round(c.tech):0),0,isFront()?'':(isPaid(o)?Math.round(c.shop):0),o.warrantyDays||0,(w&&w.until)||'',(o.claims||[]).length,js]);}
  if(coll==='tb'){base[0]="'"+o.id;}
+ if(coll==='rkm'||coll==='rkt'||coll==='rkp'||coll==='rka')return base.concat(o.cols||[]).concat([js]);
  if(coll.indexOf('rk')===0)return base.concat(["'"+o.label,o.n||0,Math.round(o.total||0),Math.round(o.partCost||0),Math.round(o.net||0),Math.round(o.bh||0),Math.round(o.fee||0),Math.round(o.adminBonus||0),Math.round(o.base||0),Math.round(o.rajin||0),Math.round(o.exp||0),Math.round(o.claim||0),Math.round(o.laba||0),o.team||'',o.cats||'',o.book||'',js]);
  if(coll==='tb')return base.concat([+o.year||0,"'"+mlabel(o.month),'Ditutup',+o.nUnit||0,Math.round(o.total||0),Math.round(o.net||0),Math.round(o.tech||0),Math.round(o.base||0),Math.round(o.adminBonus||0),Math.round(o.rajin||0),Math.round(o.exp||0),Math.round(o.claimCost||0),Math.round(o.netShop||0),Math.round(o.saldo||0),o.closedAt||'',js]);
  if(coll==='kas'){var sk=staff(o.staffId);return base.concat([o.date,sk?sk.name:o.staffId,o.kind==='potong'?'Potong gaji':'Kasbon',+o.amount||0,cell(o.note),js]);}
@@ -496,7 +501,7 @@ async function syncNow(manual){
  if(typeof navigator.onLine==='boolean'&&!navigator.onLine){SYNC.state='offline';statusRefresh();if(manual)toast('Perangkat offline. Data disinkronkan saat tersambung.');return;}
  syncing=true;SYNC.state='busy';statusRefresh();var changed=false;
  try{
-  var by={tx:[],exp:[],cfg:[],kas:[],tb:[],rkd:[],rkw:[],rkb:[],stk:[],abs:[]};
+  var by={tx:[],exp:[],cfg:[],kas:[],tb:[],rkd:[],rkw:[],rkb:[],rkm:[],rkt:[],rkp:[],rka:[],stk:[],abs:[]};
   if(!canWrite())SYNC.pending={};
   Object.keys(SYNC.pending).forEach(function(k){if(!DOCS[k]){delete SYNC.pending[k];return;}var c=k.split('/')[0];if(by[c])by[c].push(k);});
   for(var coll in by){var ks=by[coll];
@@ -1337,7 +1342,7 @@ function aturBody(){
   var ex=calc({items:[{type:'jasa',qty:1,price:260000}],share:30,fee:2}),ex2=calc({items:[{type:'jasa',qty:1,price:260000}],share:40,fee:2});
   h+='<section class="card stack"><h2>Toko</h2><div class="grid"><label class="f">Nama toko<input id="c-shop" data-c="shop" value="'+esc(cfg.shop)+'" autocomplete="off"></label><label class="f">Telepon / WA toko<input id="c-phone" type="tel" data-c="phone" value="'+esc(cfg.phone)+'" placeholder="08xxxxxxxxxx" autocomplete="off"></label></div>'+
   '<label class="f">Alamat<input id="c-addr" data-c="addr" value="'+esc(cfg.addr)+'" placeholder="Alamat untuk kepala nota" autocomplete="off"></label>'+
-  '<label class="f">Info pembayaran (rekening / QRIS)<textarea id="c-payInfo" data-c="payInfo" rows="3" placeholder="Contoh:\nBCA 1234567890 a.n. Nama Anda\nQRIS: tersedia di toko">'+esc(cfg.payInfo||'')+'</textarea><span class="small muted">Ikut tampil di pesan WhatsApp bila pelanggan membayar Transfer/QRIS.</span></label>'+
+  '<label class="f">Info pembayaran (rekening / QRIS)<textarea id="c-payInfo" data-c="payInfo" rows="3" placeholder="Contoh:\nBCA 1234567890 a.n. Nama Anda\nQRIS: tersedia di toko">'+esc(cfg.payInfo||'')+'</textarea><span class="small muted">Ikut tampil di pesan WhatsApp bila pelanggan membayar Transfer/QRIS.</span></label>'+geoBox()+
   '<label class="f">Garansi standar<select id="c-wd" data-c="warrantyDays">'+WARRS.map(function(n){return'<option value="'+n+'"'+(+cfg.warrantyDays===n?' selected':'')+'>'+(n?n+' hari':'Tanpa garansi')+'</option>';}).join('')+'</select></label>'+
   '<label class="f">Ketentuan garansi (dicetak di nota)<textarea id="c-terms" data-c="terms">'+esc(cfg.terms)+'</textarea></label></section>'+
   '<section class="card stack"><div class="row sb"><h2>Owner &amp; persetujuan</h2><span class="badge '+(cfg.ownerPinH?'good':'warn')+'">'+(cfg.ownerPinH?'PIN sudah diatur':'PIN belum diatur')+'</span></div>'+
@@ -1591,6 +1596,7 @@ function act(a,el){
  else if(a==='set-warr'){t=findTx(v);if(!t)return;t.warrantyDays=+el.dataset.n||0;put('tx',t);logAct('Garansi nota',t.no+' · '+(t.warrantyDays?t.warrantyDays+' hari':'tanpa garansi'));render();toast(t.warrantyDays?'Garansi tersimpan: '+t.warrantyDays+' hari.':'Garansi dihapus dari nota ini.');}
  else if(a==='chg-cust'){chgCust(v);}
  else if(/^pay-/.test(a)){payAct(a,v,el);}
+ else if(/^(abs-pic|geo-)/.test(a)){geoAct(a,v,el);}
  else if(a==='ef-add-x'){if(isAdmin()&&editD.f){editD.f.extra.push({k:'',v:''});render();}}
  else if(a==='ef-rm-x'){if(isAdmin()&&editD.f){editD.f.extra.splice(+el.dataset.i,1);render();}}
  else if(a==='ask-edit'){t=findTx(v);if(!t||!isActive(t)||!isAdmin())return;editD={id:v,items:JSON.parse(JSON.stringify(t.items||[])),pin:''};render();}
@@ -2856,12 +2862,12 @@ function devCfgSet(k,on){
  api(b).then(function(r){DEV.busy=false;DEV.at=Date.now();devApply(r);if(r&&r.ok)toast('Pengaturan perangkat disimpan.');render();}).catch(function(){DEV.busy=false;toast('Gagal menghubungi server.');render();});}
 /* ===== v10.2: gaji + bagi hasil teknisi, tab Absen Owner, tugas harian Admin depan ===== */
 var PAYMODES=[['bagi','Bagi hasil saja'],['campur','Gaji pokok + bagi hasil'],['gaji','Gaji pokok saja']];
-function baseOf(s){if(!s)return 0;if(s.role==='admin')return +s.base||0;return(s.pay==='gaji'||s.pay==='campur')?(+s.base||0):0;}
+function baseOf(s,m){if(!s)return 0;if(+s.dayRate>0)return hadirDays(s.id,m||month)*(+s.dayRate);if(s.role==='admin')return +s.base||0;return(s.pay==='gaji'||s.pay==='campur')?(+s.base||0):0;}
 function payLbl(s){for(var i=0;i<PAYMODES.length;i++)if(PAYMODES[i][0]===(s.pay||'bagi'))return PAYMODES[i][1];return PAYMODES[0][1];}
 function payControls(s){
  var m=s.pay||'bagi';
  return'<label class="f">Sistem pendapatan<select data-spay="'+s.id+'">'+PAYMODES.map(function(o){return'<option value="'+o[0]+'"'+(m===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select></label>'+
-  (m!=='bagi'?'<label class="f">Gaji pokok / bulan'+moneyBox('id="s-'+s.id+'-base" data-s="'+s.id+'" data-f="base"',s.base)+'</label>':'');}
+  (m!=='bagi'?'<label class="f">Gaji pokok / bulan'+moneyBox('id="s-'+s.id+'-base" data-s="'+s.id+'" data-f="base"',s.base)+'</label>':'')+'<label class="f">Gaji per hari hadir (opsional)'+moneyBox('id="s-'+s.id+'-dr" data-s="'+s.id+'" data-f="dayRate"',s.dayRate)+'<span class="small muted">Jika diisi, gaji dihitung dari hari hadir di Absensi.</span></label>';}
 function staffPay(id,mode){
  var s=staff(id);if(!s||s.role==='admin'||!isAdmin())return;
  var def=s.role==='expert'?40:30;
@@ -3096,6 +3102,141 @@ function msgText(t,type){
  return H+'🧾 *TAGIHAN PEMBAYARAN*\n📱 '+dev+'\n\n'+LN+'\n'+rows.join('\n')+'\n'+LN+payTo(t)+
   '\n\nTerima kasih telah mempercayakan perangkat Anda kepada kami. Kami menginformasikan bahwa masih terdapat sisa pembayaran atas pekerjaan di atas'+(n>0?' (unit diambil '+n+' hari lalu)':'')+'. Mohon kesediaan Bapak/Ibu untuk melunasinya'+(t.dueDate?' sesuai janji pada '+fdate(t.dueDate):' secepatnya')+'.\n\nBila ada kendala, silakan kabari kami agar kami bantu mengatur jadwal pembayarannya. Mohon abaikan pesan ini bila pembayaran sudah dilakukan.\n\n'+thanks()+waFoot();}
 
+/* ===== v10.14: rekap lengkap (bulanan/tim/piutang/absensi) ke Google Sheets, gaji harian, absensi GPS + selfie ===== */
+function hadirDays(sid,m){var S=absStat(sid,m);return S.hadir+S.telat;}
+function payBaseLine(s){
+ if(+s.dayRate>0){var n=hadirDays(s.id,month);return'<div class="ln"><span>Gaji harian ('+n+' hari hadir × '+rp(s.dayRate)+')</span><span class="num">'+rp(n*(+s.dayRate))+'</span></div>';}
+ return'<div class="ln"><span>Gaji pokok</span><span class="num">'+rp(baseOf(s))+'</span></div>';}
+function linkF(u,t){return u?'=HYPERLINK("'+u+'","'+t+'")':'';}
+function mapUrl(g){return g&&g.lat!=null?'https://www.google.com/maps?q='+g.lat+','+g.lng:'';}
+function picUrl(fid){return fid?'https://drive.google.com/file/d/'+fid+'/view':'';}
+function dist2(lat1,lng1,lat2,lng2){var R=6371000,r=Math.PI/180,a=Math.sin((lat2-lat1)*r/2),b=Math.sin((lng2-lng1)*r/2);
+ var h=a*a+Math.cos(lat1*r)*Math.cos(lat2*r)*b*b;return 2*R*Math.asin(Math.min(1,Math.sqrt(h)));}
+
+/* ---------- Rekap ke Google Sheets ---------- */
+function rkMonths(){var ms={};ms[iso(new Date()).slice(0,7)]=1;
+ txs.forEach(function(t){if(t.date)ms[t.date.slice(0,7)]=1;if(t.pickDate)ms[t.pickDate.slice(0,7)]=1;});
+ abss.forEach(function(a){if(a.date)ms[a.date.slice(0,7)]=1;});kass.forEach(function(k){if(k.date)ms[String(k.date).slice(0,7)]=1;});
+ return Object.keys(ms).sort();}
+function cashIn(m){var s=0;txs.forEach(function(t){if(!isActive(t))return;
+ if(Array.isArray(t.payments)){t.payments.forEach(function(p){if(inM(p.date,m))s+=+p.amt||0;});}
+ else if(statusOf(t)==='Diambil'&&t.pay!=='Belum bayar'&&inM(payDate(t),m))s+=calc(t).total;});return s;}
+function rkExtra(coll,doc){doc.kind=coll;rkSet(coll,doc);}
+function pubRekap2(){
+ if(!isAdmin())return;
+ var keep={rkm:{},rkt:{},rkp:{},rka:{}},ms=rkMonths();
+ ms.forEach(function(m){
+  var st=monthStats(m),mt=txs.filter(function(t){return isActive(t)&&inM(t.date,m);});
+  var nSel=mt.filter(function(t){return statusOf(t)==='Selesai';}).length,nPro=mt.filter(isProc).length;
+  var dbt=txs.filter(function(t){return isDebt(t)&&inM(payDate(t),m);}),dsum=dbt.reduce(function(x,t){return x+owing(t);},0);
+  var id='m:'+m;keep.rkm[id]=1;
+  rkExtra('rkm',{id:id,label:mlabel(m),cols:["'"+mlabel(m),st.nMasuk,st.nSelesai,nSel,nPro,st.nBatal,Math.round(st.total),Math.round(st.partCost),Math.round(st.net),Math.round(st.bh),Math.round(st.feeAmt),Math.round(st.base),Math.round(st.adminBonus),Math.round(st.totalRajinPaid),Math.round(st.exp),Math.round(st.claimCost),Math.round(st.netShop),Math.round(cashIn(m)),Math.round(dsum),dbt.length,closedM(m)?'Ditutup':'Terbuka']});
+  /* rekap tim */
+  var F=txs.filter(function(t){return isActive(t)&&isPaid(t)&&inM(payDate(t),m);});
+  cfg.staff.forEach(function(s){
+   var adm=s.role==='admin',S=absStat(s.id,m),b=st.byTech[s.id]||{selesai:0,net:0,bh:0,feeAmt:0,tech:0};
+   var mine=adm?F:F.filter(function(t){return t.techId===s.id;});
+   var omz=mine.reduce(function(x,t){return x+calc(t).total;},0),base=baseOf(s,m),dr=+s.dayRate>0;
+   var on=!!(cfg.rajinCheck&&cfg.rajinCheck[m+'|'+s.id]),raj=on?st.rajinPool:0;
+   var work=adm?st.adminBonus:b.tech,kotor=base+work+raj,pot=kasMonth(s.id,m),amb=0;
+   kass.forEach(function(k){if(k.staffId===s.id&&k.kind!=='potong'&&String(k.date).slice(0,7)===m)amb+=+k.amount||0;});
+   var paid=cfg.paid&&cfg.paid[m+'|'+s.id];
+   var has=S.total>0||omz>0||base>0||pot>0||amb>0||(adm&&st.nSelesai>0);if(!has)return;
+   var rin=adm?('Unit diambil toko: '+st.nSelesai+' · bonus unit '+nm(st.adminUnit)+' · bonus omzet '+nm(st.adminOmzet)):mine.map(function(t){var c=calc(t);return t.no+' '+(t.device||'')+' · laba '+nm(c.net)+' → '+nm(c.tech);}).join('\n');
+   var id2='t:'+m+':'+s.id;keep.rkt[id2]=1;
+   rkExtra('rkt',{id:id2,label:mlabel(m)+' '+s.name,cols:["'"+mlabel(m),s.name,ROLE[s.role]||s.role,adm?'Gaji + bonus':payLbl(s)+(dr?' + harian':''),S.hadir+S.telat,S.telat,S.izin,S.sakit,S.alpa,dr?+s.dayRate:0,dr?Math.round(base):0,dr?0:Math.round(base),adm?st.nSelesai:b.selesai,Math.round(adm?st.total:omz),Math.round(adm?st.net:b.net),Math.round(b.bh||0),Math.round(b.feeAmt||0),adm?Math.round(st.adminBonus):0,Math.round(raj),Math.round(kotor),Math.round(amb),Math.round(pot),Math.round(kotor-pot),Math.round(kasBal(s.id)),paid?'Dibayar '+paid:'Belum dibayar',rin]});
+  });
+ });
+ /* piutang & pembayaran per nota */
+ txs.forEach(function(t){
+  var pm=Array.isArray(t.payments)?t.payments:[];
+  if(!isActive(t)||!(statusOf(t)==='Diambil'||statusOf(t)==='Selesai'||pm.length))return;
+  var c=calc(t).total,pd=paidAmt(t),ow=owing(t),stb=statusOf(t)==='Diambil'?(ow===0?'Lunas':(pd>0?'Kurang bayar':'Belum bayar')):(pd>0?'DP':'Belum bayar');
+  var id3='p:'+t.id;keep.rkp[id3]=1;
+  rkExtra('rkp',{id:id3,label:t.no,cols:[t.date,"'"+t.no,t.customer||'',"'"+(t.phone||''),t.device||'',statusOf(t),t.pickDate||'',Math.round(c),Math.round(pd),Math.round(ow),t.pay||'',stb,t.dueDate||'',(isDebt(t)&&t.pickDate)?daysSince(t.pickDate):0,pm.map(function(p){return fdate(p.date)+' '+nm(p.amt)+' ('+(p.method||'-')+(p.note?', '+p.note:'')+')';}).join('\n')]});
+ });
+ /* absensi detail */
+ abss.forEach(function(a){
+  var s=staff(a.staffId),ig=a.inGeo||null,og=a.outGeo||null,id4='x:'+a.id;keep.rka[id4]=1;
+  rkExtra('rka',{id:id4,label:a.date,cols:[a.date,HARI[pd(a.date).getDay()],s?s.name:a.staffId,ABSL[a.status]||a.status,"'"+(a['in']||''),"'"+(a.out||''),+a.late||0,ig?Math.round(ig.dist||0):'',ig?ig.lat+', '+ig.lng:'',linkF(mapUrl(ig),'Peta masuk'),linkF(picUrl(a.inPhoto),'Foto masuk'),og?Math.round(og.dist||0):'',linkF(mapUrl(og),'Peta pulang'),linkF(picUrl(a.outPhoto),'Foto pulang'),a.by==='self'?'Absen sendiri':'Owner']});
+ });
+ Object.keys(DOCS).forEach(function(k){var c=k.split('/')[0];if(keep[c]&&!keep[c][k.slice(c.length+1)]){var o=DOCS[k];if(o&&!o.deleted){o.deleted=true;o.updated=Date.now();persist(k);mark(k);}}});}
+function pubRekap(){pubRekap0();try{pubRekap2();}catch(e){}}
+
+/* ---------- Absensi: lokasi toko + selfie ---------- */
+function geoBox(){
+ var g=cfg.geo||{},has=g.lat!=null&&g.lng!=null;
+ return'<div class="box stack"><strong>📍 Absensi: lokasi toko &amp; selfie</strong>'+
+  '<span class="small muted">Berlaku untuk semua anggota tim yang absen. Jam dan tanggal dicatat server. Foto disimpan di Google Drive Anda (folder "Foto Absensi Tim").</span>'+
+  '<span class="small">'+(has?'Lokasi toko tersimpan: <b>'+(+g.lat).toFixed(5)+', '+(+g.lng).toFixed(5)+'</b> (akurasi ±'+Math.round(g.acc||0)+' m) · <a href="'+mapUrl(g)+'" target="_blank" rel="noopener">lihat di peta</a>':'<b class="neg">Lokasi toko belum diatur.</b> Buka aplikasi di toko lalu tekan tombol di bawah.')+'</span>'+
+  '<div class="row"><button class="btn sm pri" data-act="geo-here">📍 Pakai lokasi saya sekarang sebagai lokasi toko</button></div>'+
+  '<label class="f">Radius absen (meter dari toko)<input id="c-gz" type="number" min="20" step="10" data-gz="radius" value="'+(+g.radius||100)+'"></label>'+
+  '<div class="chips"><button class="chip" data-act="geo-tog" data-v="on" aria-pressed="'+(!!g.on)+'">'+(g.on?'✓ ':'')+'Wajib berada di lokasi toko</button><button class="chip" data-act="geo-tog" data-v="selfie" aria-pressed="'+(!!g.selfie)+'">'+(g.selfie?'✓ ':'')+'Wajib selfie saat absen</button></div>'+
+  '<span class="small muted">Saran: radius 100 m (GPS di dalam ruangan bisa meleset 20–50 m). Owner tidak perlu absen.</span></div>';}
+function getPos(){return new Promise(function(res,rej){
+ if(!navigator.geolocation)return rej({code:0});
+ navigator.geolocation.getCurrentPosition(function(p){res({lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy});},function(e){rej(e);},{enableHighAccuracy:true,timeout:20000,maximumAge:0});});}
+function geoErr(e){return e&&e.code===1?'Izin lokasi ditolak. Izinkan lokasi untuk aplikasi ini di pengaturan browser/HP.':'Lokasi tidak terbaca. Aktifkan GPS dan coba lagi di luar ruangan/dekat jendela.';}
+function selfieShot(label){return new Promise(function(res,rej){
+ var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;z-index:9999;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px';
+ ov.innerHTML='<div style="color:#fff;font:600 14px system-ui;text-align:center">Selfie di toko untuk absensi<br><span style="font-weight:400;opacity:.8">Wajah dan latar toko harus terlihat jelas</span></div><video playsinline autoplay muted style="width:100%;max-width:420px;border-radius:14px;background:#111;transform:scaleX(-1)"></video><div style="display:flex;gap:10px"><button class="btn pri" id="sf-shot">📸 Ambil foto</button><button class="btn" id="sf-cancel">Batal</button></div><input type="file" accept="image/*" capture="user" id="sf-file" style="display:none">';
+ document.body.appendChild(ov);var v=ov.querySelector('video'),stream=null,fin=false;
+ function done(){fin=true;try{if(stream)stream.getTracks().forEach(function(t){t.stop();});}catch(e){}if(ov.parentNode)ov.parentNode.removeChild(ov);}
+ function out(img,w,h){var W=Math.min(640,w),H=Math.round(h*W/w),c=document.createElement('canvas');c.width=W;c.height=H;var x=c.getContext('2d');x.drawImage(img,0,0,W,H);
+  var t=new Date(),ts=t.toLocaleDateString('id-ID')+' '+t.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})+' · '+(label||'');
+  x.fillStyle='rgba(0,0,0,.55)';x.fillRect(0,H-26,W,26);x.fillStyle='#fff';x.font='600 14px system-ui,Arial';x.fillText(ts,8,H-8);
+  var d=c.toDataURL('image/jpeg',0.62);done();res(d.split(',')[1]);}
+ ov.querySelector('#sf-cancel').onclick=function(){done();rej(new Error('cancel'));};
+ var fi=ov.querySelector('#sf-file');fi.onchange=function(){var f=fi.files&&fi.files[0];if(!f){return;}var im=new Image(),u=URL.createObjectURL(f);im.onload=function(){out(im,im.naturalWidth,im.naturalHeight);};im.src=u;};
+ ov.querySelector('#sf-shot').onclick=function(){if(stream&&v.videoWidth){out(v,v.videoWidth,v.videoHeight);}else fi.click();};
+ if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:720}},audio:false}).then(function(s){if(fin){s.getTracks().forEach(function(t){t.stop();});return;}stream=s;v.srcObject=s;}).catch(function(){});}
+});}
+async function absTap(kind){
+ if(absD.busy)return;
+ if(!hasServer()){toast('Absen membutuhkan koneksi ke server (jam dicatat server agar adil). Coba saat online.');return;}
+ var g=cfg.geo||{},body={action:kind==='in'?'abs_in':'abs_out'};
+ absD.busy=true;render();
+ try{
+  if(g.on&&g.lat!=null){toast('Mengambil lokasi…');
+   var p;try{p=await getPos();}catch(e){toast(geoErr(e));absD.busy=false;render();return;}
+   var dd=dist2(p.lat,p.lng,+g.lat,+g.lng),rad=+g.radius||100;
+   if(dd>rad+Math.min(p.acc||0,30)){toast('Anda berada ±'+Math.round(dd)+' m dari toko (maks '+rad+' m). Absen hanya bisa di toko.');absD.busy=false;render();return;}
+   body.lat=p.lat;body.lng=p.lng;body.acc=p.acc;}
+  if(g.selfie){var sn=(staff(absSelfId())||{}).name||(AUTH&&AUTH.name)||'';
+   try{body.photo=await selfieShot(sn);}catch(e){toast('Selfie dibatalkan. Absen belum tercatat.');absD.busy=false;render();return;}}
+  var r=await api(body);
+  if(r&&r.ok&&r.doc){var d=r.doc;DOCS['abs/'+d.id]=d;persist('abs/'+d.id);rebuild();
+   toast(kind==='in'?(d.late>0?'Absen masuk tercatat '+d.in+'. Telat '+d.late+' menit.':'Absen masuk tercatat '+d.in+'. Tepat waktu, terima kasih!'):'Absen pulang tercatat '+d.out+'. Hati-hati di jalan.');}
+  else if(r&&r.error==='auth'){absD.busy=false;sessionExpired();return;}
+  else if(r&&r.error==='lokasi')toast('Anda berada ±'+r.dist+' m dari toko (maks '+r.radius+' m). Absen hanya bisa di toko.');
+  else if(r&&r.error==='foto')toast('Foto selfie wajib untuk absen.');
+  else if(r&&r.error==='gps')toast('Lokasi wajib untuk absen. Aktifkan GPS.');
+  else toast(({belummasuk:'Anda belum absen masuk hari ini.',forbidden:'Akun ini tidak memakai absen.',action:'Skrip Google belum versi terbaru. Tempel Code.gs terbaru lalu Deploy versi baru.'})[r&&r.error]||'Absen gagal. Coba lagi.');
+ }catch(e){toast('Tidak dapat menghubungi server. Periksa internet.');}
+ absD.busy=false;render();}
+function geoAct(a,v,el){
+ if(a==='abs-pic'){if(!isAdmin())return;
+  api({action:'abs_pic',fid:v}).then(function(r){
+   if(!(r&&r.ok&&r.data)){toast('Foto tidak dapat dimuat.');return;}
+   var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:12px';
+   ov.innerHTML='<img style="max-width:100%;max-height:80vh;border-radius:12px" src="data:image/jpeg;base64,'+r.data+'"><button class="btn">Tutup</button>';
+   ov.onclick=function(){if(ov.parentNode)ov.parentNode.removeChild(ov);};document.body.appendChild(ov);}).catch(function(){toast('Tidak dapat menghubungi server.');});return;}
+ if(!isAdmin())return;
+ if(a==='geo-here'){toast('Mengambil lokasi… tunggu beberapa detik.');
+  getPos().then(function(p){cfg.geo=Object.assign({on:false,selfie:false,radius:100},cfg.geo||{},{lat:+p.lat.toFixed(6),lng:+p.lng.toFixed(6),acc:Math.round(p.acc)});saveCfg();render();toast('Lokasi toko tersimpan (akurasi ±'+Math.round(p.acc)+' m).');}).catch(function(e){toast(geoErr(e));});return;}
+ if(a==='geo-tog'){cfg.geo=Object.assign({radius:100},cfg.geo||{});
+  if(v==='on'&&cfg.geo.lat==null){toast('Atur dulu lokasi toko dengan tombol "Pakai lokasi saya sekarang".');return;}
+  cfg.geo[v]=!cfg.geo[v];saveCfg();render();}}
+function absProofCard(){
+ if(!isAdmin())return'';var d=absD.date||iso(new Date()),rows='';
+ cfg.staff.forEach(function(s){var a=absDoc(d,s.id);if(!a||!(a.inGeo||a.inPhoto||a.outGeo||a.outPhoto))return;
+  function one(lbl,geo,fid){return(geo||fid)?'<div class="row sb"><span class="small">'+lbl+(geo?' · '+Math.round(geo.dist||0)+' m dari toko':'')+'</span><span class="row">'+(geo?'<a class="btn sm" href="'+mapUrl(geo)+'" target="_blank" rel="noopener">Peta</a>':'')+(fid?'<button class="btn sm" data-act="abs-pic" data-v="'+esc(fid)+'">Foto</button>':'')+'</span></div>':'';}
+  rows+='<div class="box"><strong>'+esc(s.name)+'</strong>'+one('Masuk '+esc(a['in']||'-'),a.inGeo,a.inPhoto)+one('Pulang '+esc(a.out||'-'),a.outGeo,a.outPhoto)+'</div>';});
+ return rows?'<section class="card stack"><h2>Bukti absen '+fdate(d)+'</h2>'+rows+'<span class="small muted">Rekap lengkap beserta tautan foto dan peta ada di sheet "Absensi Detail".</span></section>':'';}
+function absAdminCard(){return absAdminCard0()+absProofCard();}
+function vAbsenOwner(){return'<section class="card stack">'+geoBox()+'</section><section class="card"><span class="small muted">Rekap kehadiran seluruh tim. Owner bisa mengisi/mengoreksi hadir, izin, sakit, atau alpa tiap karyawan.</span></section>'+absAdminCard();}
+
 /* ================= v8: stok, foto, pelacakan, pengingat, absensi, target, grafik, laporan, cadangan, aktivitas ================= */
 var ABSL={hadir:'Hadir',telat:'Telat',izin:'Izin',sakit:'Sakit',alpa:'Alpa',libur:'Libur'};
 var ABSST=['hadir','telat','izin','sakit','alpa','libur'];
@@ -3203,7 +3344,7 @@ function absSelfCard(){
  h+='<div class="ledger"><div class="ln"><span>Bulan ini — hadir</span><span class="num">'+(E.S.hadir+E.S.telat)+' hari</span></div><div class="ln"><span>Telat (maks '+E.mt+')</span><span class="num '+(E.S.telat>E.mt?'neg':'')+'">'+E.S.telat+'×</span></div><div class="ln"><span>Izin (maks '+E.mi+' untuk bonus rajin)</span><span class="num '+(E.S.izin>E.mi?'neg':'')+'">'+E.S.izin+'×</span></div><div class="ln"><span>Sakit / Alpa</span><span class="num">'+E.S.sakit+'× / '+E.S.alpa+'×</span></div></div>'+
   '<span class="small '+(E.ok?'pos':'muted')+'">'+(E.ok?'Anda di jalur bonus rajin bulan ini ✔':'Bonus rajin: '+esc(E.why.join('; ')))+'</span></section>';
  return h;}
-async function absTap(kind){
+async function absTap0(kind){
  if(absD.busy)return;
  if(!hasServer()){toast('Absen membutuhkan koneksi ke server (jam dicatat server agar adil). Coba saat online.');return;}
  absD.busy=true;render();
@@ -3220,7 +3361,7 @@ function absSet(sid,st,date,note){
  delete o.deleted;o.id=id;o.date=date;o.staffId=sid;o.status=st;if(st==='hadir')o.late=0;if(note)o.note=note;if(!o.by)o.by='owner';
  put('abs',o);}
 function putMany(coll,arr){arr.forEach(function(o){o.updated=Date.now();var k=coll+'/'+o.id;DOCS[k]=o;persist(k);mark(k);});rebuild();pubPool();rkSchedule();}
-function absAdminCard(){
+function absAdminCard0(){
  if(!absD.date)absD.date=iso(new Date());
  var d=absD.date,m=month,rows='',missTot=0;
  var h='<section class="card stack"><h2>Absensi &amp; izin tim</h2><span class="small muted">Karyawan absen sendiri lewat akunnya (jam dicatat server). Owner dapat mengoreksi dan mencatat izin/sakit/alpa. Hasilnya menjadi dasar rekomendasi bonus rajin.</span>'+
@@ -3515,6 +3656,7 @@ document.addEventListener('input',function(e){
  if(ds.lg){loginD[ds.lg]=el.value;return;}
  if(ds.u){if(!USR.form)USR.form=usrNewForm();USR.form[ds.u]=ds.u==='active'?(el.value==='1'):el.value;if(ds.u==='role'){if(el.value==='teknisi'&&!USR.form.staffId&&techs()[0])USR.form.staffId=techs()[0].id;render();}return;}
  if(!canWrite())return;
+ if(ds.gz!==undefined){cfg.geo=Object.assign({},cfg.geo||{});cfg.geo[ds.gz]=Math.max(20,num(el.value));saveCfg();return;}
  if(ds.pd!==undefined){payD[ds.pd]=ds.money!==undefined?String(moneyFix(el)):el.value;return;}
  if(ds.money!==undefined){
   var val=moneyFix(el);
