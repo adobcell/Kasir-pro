@@ -3122,13 +3122,13 @@ function logoCanvas(){
  var cv=document.createElement('canvas');cv.width=W;cv.height=z.h+10;var x=cv.getContext('2d');
  x.fillStyle='#fff';x.fillRect(0,0,W,cv.height);x.drawImage(lg,Math.round((W-z.w)/2),4,z.w,z.h);return cv;}
 function preSig(t){return Promise.all([preSig0(t),logoReady()]);}
-function logoBox(){var has=logoOK();
+function logoBox0(){var has=logoOK();
  return'<div class="f"><span>Logo toko</span><div class="row" style="flex-wrap:wrap;gap:8px;align-items:center">'+
   (has?'<img src="'+esc(cfg.logo)+'" alt="Logo toko" style="max-height:64px;max-width:160px;background:#fff;border-radius:8px;padding:4px;border:1px solid var(--line)">':'<span class="muted small">Belum ada logo</span>')+
   '<label class="btn sm" for="c-logo" style="cursor:pointer">'+(has?'Ganti logo':'Pilih logo')+'</label><input id="c-logo" type="file" accept="image/*" style="position:absolute;opacity:0;width:1px;height:1px">'+
   (has?'<button class="btn sm danger" data-act="logo-del">Hapus</button>':'')+'</div>'+
   '<span class="small muted">Tampil di nota cetak, nota gambar yang dibagikan (termasuk ke WhatsApp), dan halaman login. Gambar otomatis dikecilkan dan dibuat kontras agar tajam di printer thermal.</span></div>';}
-function logoDel(){if(!isAdmin())return;delete cfg.logo;LOGOC={src:'',img:null};imgCache={key:'',url:''};saveCfg();logAct('Logo toko','dihapus');render();toast('Logo dihapus.');}
+function logoDel(){if(!isAdmin())return;delete cfg.logo;delete cfg.logoAuto;LOGOC={src:'',img:null};imgCache={key:'',url:''};saveCfg();logAct('Logo toko','dihapus');render();toast('Logo dihapus.');}
 function logoProcess(file){
  if(!isAdmin()||!file)return;
  var fr=new FileReader();
@@ -3147,10 +3147,42 @@ function logoProcess(file){
     x.putImageData(d,0,0);out=cv.toDataURL('image/jpeg',pass<2?0.8:0.6);
     if(out.length<=24000)break;sc*=0.8;}
    if(out.length>26000){toast('Gambar terlalu rumit. Pakai logo yang lebih sederhana.');return;}
-   cfg.logo=out;LOGOC={src:'',img:null};imgCache={key:'',url:''};saveCfg();logAct('Logo toko','diganti');render();toast('Logo toko tersimpan.');};
+   cfg.logo=out;delete cfg.logoAuto;LOGOC={src:'',img:null};imgCache={key:'',url:''};saveCfg();logAct('Logo toko','diganti');render();toast('Logo toko tersimpan.');};
   im.src=fr.result;};
  fr.readAsDataURL(file);}
 document.addEventListener('change',function(e){var el=e.target;if(el&&el.id==='c-logo'){var f=el.files&&el.files[0];logoProcess(f);try{el.value='';}catch(x){}}});
+
+/* ===== v10.17: logo otomatis dari nama toko ===== */
+function shopInitials(n){
+ var w=String(n||'').replace(/[^A-Za-z0-9À-ɏ ]+/g,' ').trim().split(/\s+/).filter(Boolean);
+ if(!w.length)return'K';
+ if(w.length===1)return w[0].slice(0,2).toUpperCase();
+ return(w[0][0]+w[1][0]).toUpperCase();}
+function logoGenURL(style,name){
+ var S=240,cv=document.createElement('canvas');cv.width=S;cv.height=S;var x=cv.getContext('2d'),t=shopInitials(name);
+ x.fillStyle='#fff';x.fillRect(0,0,S,S);x.fillStyle='#000';x.strokeStyle='#000';
+ function rr(a,b,w,h,r){x.beginPath();x.moveTo(a+r,b);x.arcTo(a+w,b,a+w,b+h,r);x.arcTo(a+w,b+h,a,b+h,r);x.arcTo(a,b+h,a,b,r);x.arcTo(a,b,a+w,b,r);x.closePath();}
+ function txt(sz,col){x.fillStyle=col;x.textAlign='center';x.textBaseline='middle';
+  var fam='Archivo,"Arial Black","Arial Narrow",Arial,sans-serif',fs=sz;
+  do{x.font='800 '+fs+'px '+fam;fs-=4;}while(x.measureText(t).width>S*0.58&&fs>20);
+  x.fillText(t,S/2,S/2+4);}
+ if(style==='kotak'){rr(16,16,S-32,S-32,34);x.fill();rr(30,30,S-60,S-60,24);x.strokeStyle='#fff';x.lineWidth=5;x.stroke();txt(110,'#fff');}
+ else if(style==='garis'){x.lineWidth=12;rr(18,18,S-36,S-36,34);x.stroke();x.lineWidth=4;rr(34,34,S-68,S-68,22);x.stroke();txt(110,'#000');}
+ else{x.beginPath();x.arc(S/2,S/2,S/2-12,0,Math.PI*2);x.fill();x.beginPath();x.arc(S/2,S/2,S/2-26,0,Math.PI*2);x.strokeStyle='#fff';x.lineWidth=5;x.stroke();txt(110,'#fff');}
+ return cv.toDataURL('image/jpeg',0.85);}
+function logoGen(style){
+ if(!isAdmin())return;style=style||cfg.logoAuto||'bulat';
+ cfg.logo=logoGenURL(style,cfg.shop);cfg.logoAuto=style;LOGOC={src:'',img:null};imgCache={key:'',url:''};
+ saveCfg();logAct('Logo toko','dibuat otomatis ('+style+')');render();toast('Logo dibuat dari nama toko.');}
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-act="logo-gen"]');if(b)logoGen(b.dataset.v);});
+document.addEventListener('change',function(e){var el=e.target;
+ if(el&&el.id==='c-shop'&&isAdmin()&&cfg.logoAuto&&cfg.logo){setTimeout(function(){logoGen(cfg.logoAuto);},0);}});
+function logoBox(){
+ var h=logoBox0();
+ var gen='<div class="f"><span class="small">✨ Buat logo otomatis dari nama toko ('+esc(shopInitials(cfg.shop))+')</span><div class="chips">'+
+  [['bulat','Bulat'],['kotak','Kotak'],['garis','Garis']].map(function(o){return'<button class="chip" data-act="logo-gen" data-v="'+o[0]+'" aria-pressed="'+(cfg.logoAuto===o[0]&&logoOK())+'">'+o[1]+'</button>';}).join('')+'</div>'+
+  '<span class="small muted">Inisial diambil dari nama toko (mis. "Ramdan Cell" menjadi "RC"). Setelah dibuat, logo ikut berubah otomatis bila nama toko diganti. Nama toko tetap tercetak di bawah logo.</span></div>';
+ return h+gen;}
 
 /* ===== v10.14: rekap lengkap (bulanan/tim/piutang/absensi) ke Google Sheets, gaji harian, absensi GPS + selfie ===== */
 function hadirDays(sid,m){var S=absStat(sid,m);return S.hadir+S.telat;}
