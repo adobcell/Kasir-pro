@@ -635,7 +635,7 @@ function textBytes(t){
 function sigImg(src){if(!src)return null;var im=SIGC[src];
  if(!im){im=new Image();im.onload=function(){imgCache={key:'',url:''};if(!typing())render();};im.src=src;SIGC[src]=im;}
  return(im.complete&&im.naturalWidth)?im:null;}
-function preSig(t){return new Promise(function(res){
+function preSig0(t){return new Promise(function(res){
  if(!t.signature)return res();var im=SIGC[t.signature];if(im&&im.complete&&im.naturalWidth)return res();
  im=new Image();im.onload=im.onerror=function(){SIGC[t.signature]=im;res();};im.src=t.signature;});}
 function drawNota0(t){
@@ -659,6 +659,7 @@ function drawNota0(t){
  function bar(l,r){var h=fs(28);x.fillStyle='#000';x.fillRect(M,y,CW,h);x.fillStyle='#fff';setF('800',15,DISP);x.textAlign='left';x.fillText(l,M+8,y+fs(5));
   setF('700',14,MONO);x.textAlign='right';x.fillText(r,W-M-8,y+fs(6));x.fillStyle='#000';y+=h+10;}
  var c=calc(t);
+ var lg=logoImg();if(lg){var lz=logoSize(lg,W,CW);x.drawImage(lg,Math.round((W-lz.w)/2),y,lz.w,lz.h);y+=lz.h+10;}
  cen(String(cfg.shop).toUpperCase(),'800',26,DISP,30);
  if(cfg.addr)cen(cfg.addr,'600',14,SANS,18);if(cfg.phone)cen('Telp/WA '+cfg.phone,'700',14,SANS,18);
  y+=6;solid(3);bar('NOTA SERVIS',t.no);
@@ -688,7 +689,7 @@ function drawNota0(t){
  var out=document.createElement('canvas');out.width=W;out.height=Math.min(H,Math.ceil(y)+22);
  var ox=out.getContext('2d');ox.fillStyle='#fff';ox.fillRect(0,0,out.width,out.height);ox.drawImage(cv,0,0);return out;}
 function notaImgURL(t){
- var key=JSON.stringify([t.id,t.kondisi,t.fm,t.items,t.pay,t.payments,t.warrantyDays,t.no,t.techId,t.signature?t.signature.length:0,PREFS.paper,cfg.shop,cfg.addr,cfg.phone,cfg.terms,t.trk,SYNC.url]);
+ var key=JSON.stringify([t.id,t.kondisi,t.fm,t.items,t.pay,t.payments,t.warrantyDays,t.no,t.techId,t.signature?t.signature.length:0,PREFS.paper,cfg.shop,cfg.addr,cfg.phone,(cfg.logo||'').length,cfg.terms,t.trk,SYNC.url]);
  if(imgCache.key===key)return imgCache.url;
  try{var u=drawNota(t).toDataURL('image/png');imgCache={key:key,url:u};return u;}catch(e){return'';}}
 function rasterBytes(cv){
@@ -782,7 +783,7 @@ function shell(){
   tabs.map(function(t){return'<button class="tab" data-act="tab" data-v="'+t[0]+'"'+(tab===t[0]?' aria-current="page"':'')+'>'+tabIco(t[0])+'<span>'+t[1]+'</span></button>';}).join('')+'</div></nav>'+picOverlay();}
 function loginHTML(){
  var hasUrl=!loginD.editUrl&&!!SYNC.url;
- return'<div class="wrap" style="min-height:100vh;display:grid;align-content:center;gap:16px;padding:24px 0"><div style="text-align:center"><h1>'+esc(cfg.shop||DEF_SHOP)+'</h1><span class="muted small">Kasir Servis Pro · silakan masuk</span></div>'+
+ return'<div class="wrap" style="min-height:100vh;display:grid;align-content:center;gap:16px;padding:24px 0"><div style="text-align:center">'+logoTag()+'<h1>'+esc(cfg.shop||DEF_SHOP)+'</h1><span class="muted small">Kasir Servis Pro · silakan masuk</span></div>'+
  '<form class="card stack" onsubmit="return false">'+
  (hasUrl?'':'<label class="f">Alamat server (sekali saja)<input id="lg-url" data-lg="url" value="'+esc(loginD.url)+'" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" inputmode="url"></label>')+
  '<label class="f">Username<input id="lg-user" data-lg="user" value="'+esc(loginD.user)+'" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="cth. admin / teknisi1"></label>'+
@@ -1342,7 +1343,7 @@ function aturBody(){
   var ex=calc({items:[{type:'jasa',qty:1,price:260000}],share:30,fee:2}),ex2=calc({items:[{type:'jasa',qty:1,price:260000}],share:40,fee:2});
   h+='<section class="card stack"><h2>Toko</h2><div class="grid"><label class="f">Nama toko<input id="c-shop" data-c="shop" value="'+esc(cfg.shop)+'" autocomplete="off"></label><label class="f">Telepon / WA toko<input id="c-phone" type="tel" data-c="phone" value="'+esc(cfg.phone)+'" placeholder="08xxxxxxxxxx" autocomplete="off"></label></div>'+
   '<label class="f">Alamat<input id="c-addr" data-c="addr" value="'+esc(cfg.addr)+'" placeholder="Alamat untuk kepala nota" autocomplete="off"></label>'+
-  '<label class="f">Info pembayaran (rekening / QRIS)<textarea id="c-payInfo" data-c="payInfo" rows="3" placeholder="Contoh:\nBCA 1234567890 a.n. Nama Anda\nQRIS: tersedia di toko">'+esc(cfg.payInfo||'')+'</textarea><span class="small muted">Ikut tampil di pesan WhatsApp bila pelanggan membayar Transfer/QRIS.</span></label>'+geoBox()+
+  logoBox()+'<label class="f">Info pembayaran (rekening / QRIS)<textarea id="c-payInfo" data-c="payInfo" rows="3" placeholder="Contoh:\nBCA 1234567890 a.n. Nama Anda\nQRIS: tersedia di toko">'+esc(cfg.payInfo||'')+'</textarea><span class="small muted">Ikut tampil di pesan WhatsApp bila pelanggan membayar Transfer/QRIS.</span></label>'+geoBox()+
   '<label class="f">Garansi standar<select id="c-wd" data-c="warrantyDays">'+WARRS.map(function(n){return'<option value="'+n+'"'+(+cfg.warrantyDays===n?' selected':'')+'>'+(n?n+' hari':'Tanpa garansi')+'</option>';}).join('')+'</select></label>'+
   '<label class="f">Ketentuan garansi (dicetak di nota)<textarea id="c-terms" data-c="terms">'+esc(cfg.terms)+'</textarea></label></section>'+
   '<section class="card stack"><div class="row sb"><h2>Owner &amp; persetujuan</h2><span class="badge '+(cfg.ownerPinH?'good':'warn')+'">'+(cfg.ownerPinH?'PIN sudah diatur':'PIN belum diatur')+'</span></div>'+
@@ -1596,6 +1597,7 @@ function act(a,el){
  else if(a==='set-warr'){t=findTx(v);if(!t)return;t.warrantyDays=+el.dataset.n||0;put('tx',t);logAct('Garansi nota',t.no+' · '+(t.warrantyDays?t.warrantyDays+' hari':'tanpa garansi'));render();toast(t.warrantyDays?'Garansi tersimpan: '+t.warrantyDays+' hari.':'Garansi dihapus dari nota ini.');}
  else if(a==='chg-cust'){chgCust(v);}
  else if(/^pay-/.test(a)){payAct(a,v,el);}
+ else if(a==='logo-del'){logoDel();}
  else if(/^(abs-pic|geo-)/.test(a)){geoAct(a,v,el);}
  else if(a==='ef-add-x'){if(isAdmin()&&editD.f){editD.f.extra.push({k:'',v:''});render();}}
  else if(a==='ef-rm-x'){if(isAdmin()&&editD.f){editD.f.extra.splice(+el.dataset.i,1);render();}}
@@ -2903,7 +2905,7 @@ function rasterRaw(cv){var b=rasterBytes(cv);return Array.prototype.slice.call(b
 function textBytes(t){
  var B=[27,64],W=+PREFS.paper||32;
  function T(s){s=ascii(s);for(var i=0;i<s.length;i++)B.push(s.charCodeAt(i));B.push(10);}
- B.push(27,97,1,27,69,1,29,33,17);wrap(ascii(cfg.shop).toUpperCase(),Math.floor(W/2)).forEach(T);B.push(29,33,0,27,69,0);
+ B.push(27,97,1);var lc=logoCanvas();if(lc){B=B.concat(rasterRaw(lc));}B.push(27,69,1,29,33,17);wrap(ascii(cfg.shop).toUpperCase(),Math.floor(W/2)).forEach(T);B.push(29,33,0,27,69,0);
  if(cfg.addr)wrap(ascii(cfg.addr),W).forEach(T);if(cfg.phone)T('Telp/WA '+cfg.phone);
  B.push(27,97,0,27,69,1);
  var L=notaText(t,{noHead:true}).split('\n'),i=L.length;
@@ -3101,6 +3103,54 @@ function msgText(t,type){
  if(t.dueDate)rows.push('📅 Janji bayar : '+fdate(t.dueDate));
  return H+'🧾 *TAGIHAN PEMBAYARAN*\n📱 '+dev+'\n\n'+LN+'\n'+rows.join('\n')+'\n'+LN+payTo(t)+
   '\n\nTerima kasih telah mempercayakan perangkat Anda kepada kami. Kami menginformasikan bahwa masih terdapat sisa pembayaran atas pekerjaan di atas'+(n>0?' (unit diambil '+n+' hari lalu)':'')+'. Mohon kesediaan Bapak/Ibu untuk melunasinya'+(t.dueDate?' sesuai janji pada '+fdate(t.dueDate):' secepatnya')+'.\n\nBila ada kendala, silakan kabari kami agar kami bantu mengatur jadwal pembayarannya. Mohon abaikan pesan ini bila pembayaran sudah dilakukan.\n\n'+thanks()+waFoot();}
+
+/* ===== v10.16: logo toko (Atur > Toko), tampil di nota & halaman login ===== */
+var LOGOC={src:'',img:null};
+function logoOK(){return !!(cfg.logo&&/^data:image\//.test(cfg.logo));}
+function logoImg(){
+ if(!logoOK())return null;var s=cfg.logo;
+ if(LOGOC.src!==s){LOGOC={src:s,img:null};var im=new Image();im.onload=function(){if(LOGOC.src===s){LOGOC.img=im;imgCache={key:'',url:''};if(!typing())render();}};im.src=s;}
+ return(LOGOC.img&&LOGOC.img.naturalWidth)?LOGOC.img:null;}
+function logoReady(){return new Promise(function(res){
+ if(!logoOK())return res();if(logoImg())return res();
+ var s=cfg.logo,im=new Image();im.onload=im.onerror=function(){LOGOC={src:s,img:im.naturalWidth?im:null};res();};im.src=s;});}
+function logoTag(){return logoOK()?'<img src="'+esc(cfg.logo)+'" alt="" style="max-height:64px;max-width:180px;border-radius:10px;margin-bottom:6px">':'';}
+function logoSize(lg,W,CW){var mh=Math.round(W*0.24),lw=Math.min(CW*0.55,mh*lg.naturalWidth/lg.naturalHeight),lh=lw*lg.naturalHeight/lg.naturalWidth;return{w:Math.round(lw),h:Math.round(lh)};}
+function logoCanvas(){
+ var lg=logoImg();if(!lg)return null;
+ var W=(+PREFS.paper===48)?576:384,CW=W-2*(Math.round(W*0.04)+2),z=logoSize(lg,W,CW);
+ var cv=document.createElement('canvas');cv.width=W;cv.height=z.h+10;var x=cv.getContext('2d');
+ x.fillStyle='#fff';x.fillRect(0,0,W,cv.height);x.drawImage(lg,Math.round((W-z.w)/2),4,z.w,z.h);return cv;}
+function preSig(t){return Promise.all([preSig0(t),logoReady()]);}
+function logoBox(){var has=logoOK();
+ return'<div class="f"><span>Logo toko</span><div class="row" style="flex-wrap:wrap;gap:8px;align-items:center">'+
+  (has?'<img src="'+esc(cfg.logo)+'" alt="Logo toko" style="max-height:64px;max-width:160px;background:#fff;border-radius:8px;padding:4px;border:1px solid var(--line)">':'<span class="muted small">Belum ada logo</span>')+
+  '<label class="btn sm" for="c-logo" style="cursor:pointer">'+(has?'Ganti logo':'Pilih logo')+'</label><input id="c-logo" type="file" accept="image/*" style="position:absolute;opacity:0;width:1px;height:1px">'+
+  (has?'<button class="btn sm danger" data-act="logo-del">Hapus</button>':'')+'</div>'+
+  '<span class="small muted">Tampil di nota cetak, nota gambar yang dibagikan (termasuk ke WhatsApp), dan halaman login. Gambar otomatis dikecilkan dan dibuat kontras agar tajam di printer thermal.</span></div>';}
+function logoDel(){if(!isAdmin())return;delete cfg.logo;LOGOC={src:'',img:null};imgCache={key:'',url:''};saveCfg();logAct('Logo toko','dihapus');render();toast('Logo dihapus.');}
+function logoProcess(file){
+ if(!isAdmin()||!file)return;
+ var fr=new FileReader();
+ fr.onerror=function(){toast('Gambar tidak dapat dibaca.');};
+ fr.onload=function(){var im=new Image();
+  im.onerror=function(){toast('File bukan gambar yang valid.');};
+  im.onload=function(){
+   var w=im.naturalWidth,h=im.naturalHeight;if(!w||!h){toast('Gambar tidak valid.');return;}
+   var out='',sc=Math.min(1,320/w,200/h);
+   for(var pass=0;pass<5;pass++){
+    var cw=Math.max(40,Math.round(w*sc)),ch=Math.max(20,Math.round(h*sc)),cv=document.createElement('canvas');cv.width=cw;cv.height=ch;
+    var x=cv.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,cw,ch);x.drawImage(im,0,0,cw,ch);
+    var d=x.getImageData(0,0,cw,ch),p=d.data;
+    var cl=function(px,py){var o=(py*cw+px)*4;return p[o]*0.299+p[o+1]*0.587+p[o+2]*0.114;},inv=(cl(1,1)+cl(cw-2,1)+cl(1,ch-2)+cl(cw-2,ch-2))/4<90;
+    for(var i=0;i<p.length;i+=4){var g=p[i]*0.299+p[i+1]*0.587+p[i+2]*0.114;if(inv)g=255-g;g=Math.max(0,Math.min(255,(g-128)*1.4+128));p[i]=p[i+1]=p[i+2]=g;}
+    x.putImageData(d,0,0);out=cv.toDataURL('image/jpeg',pass<2?0.8:0.6);
+    if(out.length<=24000)break;sc*=0.8;}
+   if(out.length>26000){toast('Gambar terlalu rumit. Pakai logo yang lebih sederhana.');return;}
+   cfg.logo=out;LOGOC={src:'',img:null};imgCache={key:'',url:''};saveCfg();logAct('Logo toko','diganti');render();toast('Logo toko tersimpan.');};
+  im.src=fr.result;};
+ fr.readAsDataURL(file);}
+document.addEventListener('change',function(e){var el=e.target;if(el&&el.id==='c-logo'){var f=el.files&&el.files[0];logoProcess(f);try{el.value='';}catch(x){}}});
 
 /* ===== v10.14: rekap lengkap (bulanan/tim/piutang/absensi) ke Google Sheets, gaji harian, absensi GPS + selfie ===== */
 function hadirDays(sid,m){var S=absStat(sid,m);return S.hadir+S.telat;}
