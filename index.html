@@ -257,6 +257,40 @@ body:has(nav.tabs) .wm{margin-top:-92px;padding-bottom:96px}
  .rp table.grid th,.rp table.grid td{padding:3px 5px}
  .rp thead{display:table-header-group}
 }
+
+/* ===== v10.24: tampilan PC (layar lebar): menu samping, konten lebar, kartu 2 kolom ===== */
+@media (min-width:1100px){
+ :root{--sbw:244px}
+ body{padding:0 32px 0 calc(var(--sbw) + 32px)}
+ .wrap{max-width:1240px}
+ .wrap>header.top{margin:0;max-width:none;padding:20px 28px;border-radius:0 0 26px 26px;gap:10px 24px}
+ .top h1{font-size:1.75rem}
+ .top .sub{font-size:.85rem}
+ main{padding:22px 0 40px;gap:18px}
+ .card{padding:22px}
+ h2{font-size:1.2rem}
+ .grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:14px}
+ /* menu samping */
+ nav.tabs{top:0;bottom:0;left:0;right:auto;width:var(--sbw);border-radius:0;padding:26px 14px 56px;background:var(--hdr);color:var(--hdr-fg);box-shadow:8px 0 30px -18px rgba(0,0,0,.6);overflow-y:auto;border:0}
+ nav.tabs::before{content:"MENU";display:block;font:700 .72rem/1 var(--f-b);letter-spacing:.18em;color:var(--hdr-mute);padding:0 14px 14px}
+ nav.tabs::after{content:"by Deroid Unbricker";position:fixed;left:0;bottom:16px;width:var(--sbw);text-align:center;font:600 .68rem/1 var(--f-b);letter-spacing:.08em;color:var(--hdr-mute);opacity:.8}
+ nav.tabs .wrap{max-width:none;margin:0;padding:0}
+ nav.tabs .tabs-in,.t8 .tabs-in{display:flex;flex-direction:column;gap:6px;overflow:visible}
+ .tab,.t8 .tab,.t7 .tab{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:14px;flex:none;min-width:0;width:100%;padding:13px 16px;border-radius:14px;font-size:.98rem;font-weight:600;color:var(--hdr-mute);text-align:left}
+ .tab svg{width:23px;height:23px;flex:none}
+ .tab:hover{background:rgba(255,255,255,.08);color:var(--hdr-fg)}
+ .tab[aria-current=page],.tab[aria-current=page]:hover{background:var(--accent);color:var(--accent-fg);box-shadow:0 10px 22px -12px var(--accent)}
+ .tab span{overflow:visible;text-overflow:clip}
+ #toast{left:calc(50% + var(--sbw)/2);bottom:28px}
+ .savebar{bottom:18px;max-width:560px}
+ body:has(nav.tabs) .wm,.wm{display:none}
+ /* halaman berkartu: dua kolom */
+ body[data-tab=gaji] main,body[data-tab=biaya] main,body[data-tab=laporan] main,body[data-tab=stok] main{display:block;column-count:2;column-gap:18px}
+ body[data-tab=gaji] main>*,body[data-tab=biaya] main>*,body[data-tab=laporan] main>*,body[data-tab=stok] main>*{break-inside:avoid;margin:0 0 18px}
+ /* daftar nota & isian lebih lega */
+ input,select,textarea{font-size:1rem}
+}
+@media (min-width:1600px){:root{--sbw:260px}.wrap{max-width:1400px}}
 .t8 .tabs-in{overflow-x:auto;scrollbar-width:none}.t8 .tab{flex:1 0 auto;min-width:62px}
 </style>
 </head>
@@ -818,7 +852,7 @@ function loginHTML(){
  (hasUrl?'<div class="small muted" style="text-align:center">Server: tersimpan di perangkat ini. <button type="button" class="linkbtn" data-act="login-url">Ganti</button></div>':'')+
  '</form>'+
  (SYNC.url?'':'<div class="card stack"><span class="small muted">Belum memakai Google Sheets? Anda bisa memakai aplikasi ini sendiri di perangkat ini tanpa server (data hanya tersimpan di perangkat ini).</span><div><button class="btn sm" data-act="login-local">Pakai mode lokal (tanpa server)</button></div></div>')+'</div>';}
-function render(){
+function render0(){
  var ae=document.activeElement,id=ae&&ae.id,ss=null,se=null,y=window.scrollY;
  try{ss=ae.selectionStart;se=ae.selectionEnd;}catch(e){}
  document.getElementById('app').innerHTML=AUTH?(needSop()?sopGateHTML():shell()):loginHTML();sopStart();
@@ -3359,7 +3393,7 @@ function absProofCard(){
 function absAdminCard(){return absAdminCard0()+absProofCard();}
 function vAbsenOwner(){return'<section class="card stack">'+geoBox()+'</section><section class="card"><span class="small muted">Rekap kehadiran seluruh tim. Owner bisa mengisi/mengoreksi hadir, izin, sakit, atau alpa tiap karyawan.</span></section>'+absAdminCard();}
 /* ===== v10.19: pembaruan otomatis dari GitHub ===== */
-var APP_VER='10.23';
+var APP_VER='10.24';
 function verOf(h){var m=/APP_VER='([^']+)'/.exec(h||'');return m?m[1]:'';}
 var updBusy=false,updLast=0;
 function applyUpdate(){
@@ -3432,6 +3466,9 @@ function repWeekHTML(st,m){
  var debts=txs.filter(function(t){return isDebt(t)&&payDate(t).slice(0,7)===m;}),ds=debts.reduce(function(x,t){return x+owing(t);},0);
  return'<h2>6a. Rekap per minggu</h2><table class="grid"><thead><tr><th>Minggu</th><th class="r">Masuk</th><th class="r">Diambil</th><th class="r">Batal</th><th class="r">Omzet</th><th class="r">Laba bersih</th><th class="r">Teknisi</th><th class="r">Toko</th></tr></thead><tbody>'+rows+'</tbody></table>'+
   '<p class="note">Omzet dan laba dihitung pada tanggal unit diambil. Minggu 1 = tanggal 1–7, dst.'+(debts.length?' Tagihan belum lunas dari nota bulan ini: '+debts.length+' nota, '+rp(ds)+'.':'')+'</p>';}
+
+/* ===== v10.24: penanda halaman untuk tata letak PC ===== */
+function render(){try{document.body.setAttribute('data-tab',(typeof tab!=='undefined'?tab:''));}catch(e){}return render0();}
 
 /* ================= v8: stok, foto, pelacakan, pengingat, absensi, target, grafik, laporan, cadangan, aktivitas ================= */
 var ABSL={hadir:'Hadir',telat:'Telat',izin:'Izin',sakit:'Sakit',alpa:'Alpa',libur:'Libur'};
