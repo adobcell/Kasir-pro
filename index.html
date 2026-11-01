@@ -234,6 +234,29 @@ a.btn{display:inline-flex;align-items:center}
 .wm{text-align:center;font:700 11px/14px "IBM Plex Sans",system-ui,Arial,sans-serif;letter-spacing:.06em;color:var(--muted);opacity:.7;margin-top:0;padding:4px 0 28px;position:relative;z-index:0;pointer-events:none}
 body:has(nav.tabs) .wm{margin-top:-92px;padding-bottom:96px}
 @media print{.wm{display:none}}
+
+/* ===== v10.22: perapihan cetak laporan / tutup buku ===== */
+.rp table,.rp table.grid{display:table!important;width:100%;table-layout:auto;gap:0;grid-template-columns:none}
+.rp thead{display:table-header-group!important}
+.rp tbody{display:table-row-group!important}
+.rp tr{display:table-row!important;break-inside:avoid;page-break-inside:avoid}
+.rp td,.rp th{display:table-cell!important}
+.rp table.grid td:first-child,.rp table.grid th:first-child{text-align:left}
+.rp table.grid td.r,.rp table.grid th.r{text-align:right;white-space:nowrap}
+.rp table.grid td:first-child{width:auto}
+.rp h2{break-after:avoid;page-break-after:avoid;margin-top:14px}
+.rp table.kv td:last-child{white-space:nowrap}
+.rp-chart{max-width:150mm;margin:0 auto}
+.rp .chart{max-height:50mm;width:100%}
+.rp-sign{break-inside:avoid;page-break-inside:avoid;align-items:flex-start}
+.rp-sign>div{min-width:60mm}
+.rp-foot{break-inside:avoid;margin-top:10px}
+@media print{
+ @page{size:A4;margin:14mm 14mm 16mm;@bottom-center{content:"Halaman " counter(page) " dari " counter(pages);font:9px Arial,sans-serif;color:#777}}
+ .rp{font-size:11.5px}
+ .rp table.grid th,.rp table.grid td{padding:3px 5px}
+ .rp thead{display:table-header-group}
+}
 .t8 .tabs-in{overflow-x:auto;scrollbar-width:none}.t8 .tab{flex:1 0 auto;min-width:62px}
 </style>
 </head>
@@ -1012,7 +1035,7 @@ function vNota(){
 
 function rajinRow(s,st){var k=month+'|'+s.id,on=!!(cfg.rajinCheck&&cfg.rajinCheck[k]);
  return{on:on,val:on?st.rajinPool:0,html:'<div class="ln"><span><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" data-act="toggle-rajin" data-v="'+s.id+'"'+(on?' checked':'')+'> <b>Bonus Rajin ('+pct(cfg.rajinRate)+' sisa toko)</b></label><span class="small muted">Syarat: full hadir, maks 2 telat, zero rework, nota rapi.</span><br>'+eligLine(rajinElig(s.id,month))+'</span><span class="num '+(on?'pos':'muted')+'">'+(on?'+ '+rp(st.rajinPool):'Rp 0')+'</span></div>'};}
-function vGaji(){
+function vGaji0(){
  var st=monthStats(month);
  var h='<section class="card"><h2>Gaji &amp; bagi hasil '+mlabel(month)+'</h2><p class="muted small" style="margin:6px 0 0"><b>Admin</b>: gaji pokok + bonus. <b>Teknisi</b>: bagi hasil + fee per unit dari nota yang sudah <b>diambil</b> pelanggan di bulan ini (status Selesai belum dihitung), ditambah gaji pokok bila dipilih di Atur › Toko &amp; tarif.</p></section>';
  cfg.staff.forEach(function(s){
@@ -2995,11 +3018,18 @@ function chgCust(id){
 function trkLine(t){var l=trkLink(t);return l?'\n\n📍 *Pantau status unit Anda kapan saja:*\n'+l:'';}
 
 /* ===== v10.10: Edit nota lengkap, hanya Owner ===== */
-function ownerFields(t){return{customer:t.customer||'',phone:t.phone||'',device:t.device||'',imei:t.imei||'',complaint:t.complaint||'',kondisi:t.kondisi||'',date:t.date||'',techId:t.techId||'',pay:t.pay||'Tunai',warr:String(+t.warrantyDays||0),note:t.ownerNote||'',extra:(t.extra||[]).map(function(x){return{k:x.k||'',v:x.v||''};})};}
+function ownerFields(t){return{customer:t.customer||'',phone:t.phone||'',device:t.device||'',imei:t.imei||'',complaint:t.complaint||'',kondisi:t.kondisi||'',date:t.date||'',techId:t.techId||'',pay:t.pay||'Tunai',warr:String(+t.warrantyDays||0),note:t.ownerNote||'',extra:(t.extra||[]).map(function(x){return{k:x.k||'',v:x.v||''};}),status:statusOf(t),doneDate:t.doneDate||'',pickDate:t.pickDate||'',cancelReason:t.cancelReason||''};}
 function efSet(key,val){if(!editD.f)return;var m=/^x(\d+)([kv])$/.exec(key);if(m){var r=editD.f.extra[+m[1]];if(r)r[m[2]]=val;}else editD.f[key]=val;}
 function ownerCheck(t){var f=editD.f;if(!f)return true;
  if(!String(f.customer).trim()){toast('Nama pelanggan tidak boleh kosong.');return false;}
  if(f.date&&f.date!==t.date&&locked(f.date)){toast('Tanggal itu masuk periode yang sudah ditutup.');return false;}
+ var ns=f.status||statusOf(t),os=statusOf(t);
+ if(ns!==os||(f.pickDate||'')!==(t.pickDate||'')||(f.doneDate||'')!==(t.doneDate||'')){
+  if(isPaid(t)&&locked(payDate(t)))return false;
+  if(ns==='Diambil'&&locked(f.pickDate||iso(new Date())))return false;
+  if(ns==='Dibatalkan'&&os!=='Dibatalkan'&&locked(iso(new Date())))return false;}
+ if(ns==='Diambil'&&f.pickDate&&f.doneDate&&f.pickDate<f.doneDate){toast('Tanggal diambil tidak boleh sebelum tanggal selesai.');return false;}
+ if(ns==='Dibatalkan'&&os!=='Dibatalkan'&&!String(f.cancelReason||'').trim()){toast('Isi alasan pembatalan.');return false;}
  return true;}
 function ownerApply(t){var f=editD.f,ch=[];if(!f)return ch;
  function set(k,v,lbl){v=String(v).trim();var old=t[k]==null?'':t[k];if(String(old)!==v){ch.push(lbl+': '+(old||'-')+' → '+(v||'-'));t[k]=v;}}
@@ -3012,6 +3042,13 @@ function ownerApply(t){var f=editD.f,ch=[];if(!f)return ch;
  var nt=String(f.note||'').trim();if(nt!==(t.ownerNote||'')){ch.push('Catatan Owner diubah');if(nt)t.ownerNote=nt;else delete t.ownerNote;}
  var ex=(f.extra||[]).filter(function(x){return String(x.k).trim()&&String(x.v).trim();}).map(function(x){return{k:String(x.k).trim(),v:String(x.v).trim()};});
  if(JSON.stringify(ex)!==JSON.stringify(t.extra||[])){ch.push('Data tambahan diubah');if(ex.length)t.extra=ex;else delete t.extra;}
+ var os=statusOf(t),ns=f.status||os;
+ if(ns!==os){ch.push('Status: '+(STLBL[os]||os)+' → '+(STLBL[ns]||ns));t.status=ns;
+  if(ns==='Dibatalkan'){t.cancelReason=String(f.cancelReason||'').trim();t.cancelAt=t.cancelAt||iso(new Date());delete t.pickDate;}
+  else{delete t.cancelReason;delete t.cancelAt;if(PROSES.indexOf(ns)>=0){delete t.doneDate;delete t.pickDate;}}}
+ else if(ns==='Dibatalkan'){var cr=String(f.cancelReason||'').trim();if(cr&&cr!==(t.cancelReason||'')){ch.push('Alasan batal diubah');t.cancelReason=cr;}}
+ if(ns==='Selesai'||ns==='Diambil'){var dd=f.doneDate||t.doneDate||iso(new Date());if(dd!==t.doneDate){ch.push('Tgl selesai: '+(t.doneDate||'-')+' → '+dd);t.doneDate=dd;}}
+ if(ns==='Diambil'){var pk=f.pickDate||t.pickDate||iso(new Date());if(pk!==t.pickDate){ch.push('Tgl diambil: '+(t.pickDate||'-')+' → '+pk);t.pickDate=pk;}}
  return ch;}
 function editPanel(t){
  var f=editD.f||(editD.f=ownerFields(t)),T=techs(),W=WARRS.slice();if(W.indexOf(+f.warr)<0)W.push(+f.warr);W.sort(function(a,b){return a-b;});
@@ -3022,6 +3059,9 @@ function editPanel(t){
   '<label class="f">Teknisi pengerja<select data-ef="techId"><option value="">—</option>'+T.map(function(s){return'<option value="'+esc(s.id)+'"'+(f.techId===s.id?' selected':'')+'>'+esc(s.name)+'</option>';}).join('')+'</select></label>'+
   '<label class="f">Pembayaran<select data-ef="pay">'+PAYS.map(function(p){return'<option'+(f.pay===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select></label>'+
   '<label class="f">Garansi<select data-ef="warr">'+W.map(function(d){return'<option value="'+d+'"'+(+f.warr===d?' selected':'')+'>'+(d?d+' hari':'Tanpa garansi')+'</option>';}).join('')+'</select></label></div>'+
+  '<div class="box stack"><strong class="small">Status nota (Owner)</strong><span class="small muted">Mengubah status memengaruhi omzet dan bagi hasil: omzet dihitung pada tanggal diambil. Nota batal tidak dihitung. Bulan yang sudah ditutup tidak bisa diubah.</span><div class="grid"><label class="f">Status<select data-ef="status">'+STAT.concat(['Dibatalkan']).map(function(x){return'<option value="'+x+'"'+(f.status===x?' selected':'')+'>'+(STLBL[x]||x)+'</option>';}).join('')+'</select></label>'+
+  '<label class="f">Tanggal selesai<input data-ef="doneDate" type="date" value="'+esc(f.doneDate)+'"></label><label class="f">Tanggal diambil<input data-ef="pickDate" type="date" value="'+esc(f.pickDate)+'"></label></div>'+
+  '<label class="f">Alasan batal (wajib bila dibatalkan)<input data-ef="cancelReason" value="'+esc(f.cancelReason)+'" autocomplete="off"></label></div>'+
   ta('complaint','Keluhan')+ta('kondisi','Kondisi awal unit')+ta('note','Catatan Owner (internal, tidak dicetak)')+
   '<strong class="small">Data tambahan (opsional)</strong><span class="small muted">Tambahkan kolom bebas sesuai kebutuhan, misalnya "Nomor garansi vendor" atau "Lokasi rak". Tampil di detail nota.</span>'+
   (f.extra||[]).map(function(x,i){return'<div class="grid"><label class="f">Nama kolom<input data-ef="x'+i+'k" value="'+esc(x.k)+'" autocomplete="off"></label><label class="f">Isi<input data-ef="x'+i+'v" value="'+esc(x.v)+'" autocomplete="off"></label><button class="linkbtn" data-act="ef-rm-x" data-i="'+i+'">Hapus kolom</button></div>';}).join('')+
@@ -3182,7 +3222,7 @@ function logoBox(){
  var gen='<div class="f"><span class="small">✨ Buat logo otomatis dari nama toko ('+esc(shopInitials(cfg.shop))+')</span><div class="chips">'+
   [['bulat','Bulat'],['kotak','Kotak'],['garis','Garis']].map(function(o){return'<button class="chip" data-act="logo-gen" data-v="'+o[0]+'" aria-pressed="'+(cfg.logoAuto===o[0]&&logoOK())+'">'+o[1]+'</button>';}).join('')+'</div>'+
   '<span class="small muted">Inisial diambil dari nama toko (mis. "Ramdan Cell" menjadi "RC"). Setelah dibuat, logo ikut berubah otomatis bila nama toko diganti. Nama toko tetap tercetak di bawah logo.</span></div>';
- return h+gen;}
+ return h+gen+(typeof updBox==='function'?updBox():'');}
 
 /* ===== v10.14: rekap lengkap (bulanan/tim/piutang/absensi) ke Google Sheets, gaji harian, absensi GPS + selfie ===== */
 function hadirDays(sid,m){var S=absStat(sid,m);return S.hadir+S.telat;}
@@ -3318,6 +3358,80 @@ function absProofCard(){
  return rows?'<section class="card stack"><h2>Bukti absen '+fdate(d)+'</h2>'+rows+'<span class="small muted">Rekap lengkap beserta tautan foto dan peta ada di sheet "Absensi Detail".</span></section>':'';}
 function absAdminCard(){return absAdminCard0()+absProofCard();}
 function vAbsenOwner(){return'<section class="card stack">'+geoBox()+'</section><section class="card"><span class="small muted">Rekap kehadiran seluruh tim. Owner bisa mengisi/mengoreksi hadir, izin, sakit, atau alpa tiap karyawan.</span></section>'+absAdminCard();}
+/* ===== v10.19: pembaruan otomatis dari GitHub ===== */
+var APP_VER='10.23';
+function verOf(h){var m=/APP_VER='([^']+)'/.exec(h||'');return m?m[1]:'';}
+var updBusy=false,updLast=0;
+function applyUpdate(){
+ try{if('caches' in window)caches.keys().then(function(ks){return Promise.all(ks.map(function(k){return caches.delete(k);}));}).catch(function(){});}catch(e){}
+ try{if(navigator.serviceWorker)navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister();});}).catch(function(){});}catch(e){}
+ setTimeout(function(){location.reload();},700);}
+function checkUpdate(manual){
+ if(updBusy||!navigator.onLine||location.protocol.indexOf('http')!==0)return;
+ if(!manual&&Date.now()-updLast<60000)return;
+ updBusy=true;updLast=Date.now();
+ fetch(location.pathname+'?_v='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():''}).then(function(h){
+  updBusy=false;var v=verOf(h);
+  if(v&&v!==APP_VER){
+   try{if(sessionStorage.getItem('upd-try')===v){if(manual)toast('Versi terbaru belum siap, coba lagi sebentar lagi.');return;}sessionStorage.setItem('upd-try',v);}catch(e){}
+   toast('Memperbarui aplikasi ke versi '+v+'…');applyUpdate();
+  }else if(manual)toast('Aplikasi sudah versi terbaru ('+APP_VER+').');
+ }).catch(function(){updBusy=false;if(manual)toast('Tidak bisa memeriksa pembaruan.');});}
+document.addEventListener('visibilitychange',function(){if(!document.hidden)checkUpdate(false);});
+window.addEventListener('online',function(){checkUpdate(false);});
+setTimeout(function(){checkUpdate(false);},2500);
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-act="app-upd"]');if(b)checkUpdate(true);});
+function updBox(){return'<div class="f"><span>Versi aplikasi</span><div class="row" style="gap:8px;align-items:center"><b>'+esc(APP_VER)+'</b><button class="btn sm" data-act="app-upd">Cek pembaruan</button></div><span class="small muted">Aplikasi memeriksa versi terbaru dari GitHub otomatis saat dibuka.</span></div>';}
+
+function vGaji(){var h=vGaji0();
+ try{var n=debtN();if(n>0&&isAdmin())h+='<section class="card"><div class="box"><strong class="neg">⚠ '+n+' nota sudah diambil tapi belum lunas ('+rp(debtSum())+')</strong><span class="small muted">Bagi hasil teknisi dari nota ini sudah ikut terhitung di atas. Tagih pelanggan dulu sebelum bagi hasilnya dibayarkan ke teknisi.</span></div></section>';}catch(e){}
+ return h;}
+
+/* ===== v10.20: antrean pengingat WhatsApp (unit belum diambil + tagihan) ===== */
+var RQ={open:false,skip:{}};
+function rqItems(){var td=iso(new Date()),L=[];
+ idleList().forEach(function(x){var t=x.t;if(RQ.skip['i'+t.id]||(t.rem||[]).some(function(r){return r.d===td;})||!normPhone(t.phone))return;L.push({k:'idle',t:t,n:x.n,url:waLink(t,msgText(t,'ingat'))});});
+ txs.filter(isDebt).forEach(function(t){if(RQ.skip['d'+t.id]||(t.dun||[]).some(function(r){return r.d===td;})||!normPhone(t.phone))return;L.push({k:'debt',t:t,url:waLink(t,msgText(t,'tagih'))});});
+ return L;}
+function idleBanner(){
+ if(!canWrite())return'';
+ if(RQ.open)return rqPanel();
+ var L=rqItems(),ni=L.filter(function(x){return x.k==='idle';}).length,nd=L.length-ni;
+ if(!L.length)return'';
+ return'<section class="card stack" style="border-color:var(--warn)"><div class="row sb"><strong>📣 '+L.length+' pengingat hari ini</strong><button class="btn sm pri" data-act="rq-open">Buka antrean</button></div><span class="small muted">'+(ni?ni+' unit selesai belum diambil':'')+(ni&&nd?' · ':'')+(nd?nd+' tagihan belum lunas':'')+'. Pesan sudah disiapkan, tinggal tekan kirim.</span></section>';}
+function rqPanel(){
+ var L=rqItems();
+ var h='<section class="card stack" style="border-color:var(--warn)"><div class="row sb"><strong>📣 Antrean pengingat WhatsApp</strong><button class="btn sm" data-act="rq-close">Tutup</button></div>'+
+  '<span class="small muted">WhatsApp tidak mengizinkan kirim massal otomatis. Tekan <b>Kirim</b>, WhatsApp terbuka dengan pesan siap, tekan kirim di WhatsApp, lalu kembali ke sini dan lanjut ke berikutnya. Yang sudah dikirim hari ini hilang dari antrean.</span>';
+ if(!L.length)return h+'<div class="box">✅ Semua pengingat hari ini sudah dikirim.</div></section>';
+ return h+L.map(function(x,i){var t=x.t;
+  return'<div class="box"><div class="row sb"><span><b>'+esc(t.customer||'-')+'</b> · '+esc(t.device||'')+'<br><span class="small muted">'+esc(t.no)+' · '+(x.k==='idle'?'Unit selesai '+x.n+' hari, belum diambil':'Tagihan sisa '+rp(owing(t)))+'</span></span><span class="badge '+(x.k==='idle'?'warn':'bad')+'">'+(x.k==='idle'?'Ambil unit':'Tagih')+'</span></div>'+
+  '<div class="row"><a class="btn sm pri" data-act="rq-send" data-k="'+x.k+'" data-v="'+esc(t.id)+'" href="'+x.url+'" target="_blank" rel="noopener">'+(i===0?'Kirim berikutnya ▶':'Kirim')+'</a><button class="btn sm" data-act="rq-skip" data-k="'+x.k+'" data-v="'+esc(t.id)+'">Lewati</button></div></div>';}).join('')+'</section>';}
+document.addEventListener('click',function(e){
+ var b=e.target.closest&&e.target.closest('[data-act^="rq-"]');if(!b)return;var a=b.dataset.act,id=b.dataset.v,k=b.dataset.k;
+ if(a==='rq-open'){RQ.open=true;render();return;}
+ if(a==='rq-close'){RQ.open=false;render();return;}
+ if(a==='rq-skip'){RQ.skip[(k==='idle'?'i':'d')+id]=1;render();return;}
+ if(a==='rq-send'){var t=findTx(id);if(!t||!canWrite())return;
+  setTimeout(function(){var td=iso(new Date());
+   if(k==='idle'){var n2=t.doneDate?diffDays(t.doneDate,td):0;t.rem=(t.rem||[]).concat([{d:td,lv:idleLevel(n2)}]);logAct('Pengingat unit',t.no+' · hari ke-'+n2+' · tahap '+idleLevel(n2));}
+   else{t.dun=(t.dun||[]).concat([{d:td,amt:owing(t)}]);logAct('Tagihan via WA',t.no+' · sisa '+rp(owing(t)));}
+   put('tx',t);render();},0);}
+});
+
+/* ===== v10.23: rekap per minggu + baris total di laporan ===== */
+function repSum(keys,st){var o={masuk:0,selesai:0,batal:0,total:0,net:0,tech:0,shop:0};keys.forEach(function(d){var r=st.days[d];if(!r)return;for(var k in o)o[k]+=+r[k]||0;});return o;}
+function repRow(lbl,o,cls){return'<tr class="'+(cls||'')+'"><td>'+lbl+'</td><td class="r">'+o.masuk+'</td><td class="r">'+o.selesai+'</td><td class="r">'+o.batal+'</td><td class="r">'+nm(o.total)+'</td><td class="r">'+nm(o.net)+'</td><td class="r">'+nm(o.tech)+'</td><td class="r">'+nm(o.shop)+'</td></tr>';}
+function repTotRow(st,dk){return repRow('<b>TOTAL BULAN</b>',repSum(dk,st),'tot');}
+function repWeekHTML(st,m){
+ var y=+m.slice(0,4),mo=+m.slice(5,7),last=new Date(y,mo,0).getDate(),rows='',keys=Object.keys(st.days),all=[];
+ for(var w=0;w<5;w++){var a=w*7+1,b=Math.min(last,a+6);if(a>last)break;
+  var ks=keys.filter(function(d){var n=+d.slice(8,10);return n>=a&&n<=b;});all=all.concat(ks);
+  rows+=repRow('Minggu '+(w+1)+' <span style="color:#666">('+a+'–'+b+' '+BULAN[mo-1].slice(0,3)+')</span>',repSum(ks,st));}
+ rows+=repRow('<b>TOTAL BULAN</b>',repSum(all,st),'tot');
+ var debts=txs.filter(function(t){return isDebt(t)&&payDate(t).slice(0,7)===m;}),ds=debts.reduce(function(x,t){return x+owing(t);},0);
+ return'<h2>6a. Rekap per minggu</h2><table class="grid"><thead><tr><th>Minggu</th><th class="r">Masuk</th><th class="r">Diambil</th><th class="r">Batal</th><th class="r">Omzet</th><th class="r">Laba bersih</th><th class="r">Teknisi</th><th class="r">Toko</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+  '<p class="note">Omzet dan laba dihitung pada tanggal unit diambil. Minggu 1 = tanggal 1–7, dst.'+(debts.length?' Tagihan belum lunas dari nota bulan ini: '+debts.length+' nota, '+rp(ds)+'.':'')+'</p>';}
 
 /* ================= v8: stok, foto, pelacakan, pengingat, absensi, target, grafik, laporan, cadangan, aktivitas ================= */
 var ABSL={hadir:'Hadir',telat:'Telat',izin:'Izin',sakit:'Sakit',alpa:'Alpa',libur:'Libur'};
@@ -3531,7 +3645,7 @@ function picOverlay(){
 /* ---------- Pengingat unit belum diambil ---------- */
 function idleLevel(n){return n>=(+cfg.idleD3||30)?3:n>=(+cfg.idleD2||7)?2:n>=(+cfg.idleD1||3)?1:0;}
 function idleList(){var td=iso(new Date()),L=[];txs.forEach(function(t){if(statusOf(t)!=='Selesai'||!t.doneDate)return;var n=diffDays(t.doneDate,td),lv=idleLevel(n);if(lv)L.push({t:t,n:n,lv:lv});});L.sort(function(a,b){return b.n-a.n;});return L;}
-function idleBanner(){
+function idleBanner0(){
  var L=idleList();if(!L.length)return'';
  var n2=L.filter(function(x){return x.lv>=2;}).length;
  return'<section class="card stack" style="border-color:var(--warn)"><div class="row sb"><strong>⏰ '+L.length+' unit selesai belum diambil</strong><button class="btn sm pri" data-act="idle-open">Lihat &amp; ingatkan</button></div><span class="small muted">'+(n2?n2+' unit sudah lewat '+(+cfg.idleD2||7)+' hari. ':'')+'Pesan pengingat yang sopan sudah disiapkan di tiap nota.</span></section>';}
@@ -3555,8 +3669,8 @@ function tgtCard(){
 function tgtEditor(){
  var T=cfg.target||{};
  return'<section class="card stack"><h2>Target bulanan tim</h2><div class="grid"><label class="f">Target omzet (unit diambil)'+moneyBox('id="tg-omzet" data-tg="omzet"',T.omzet)+'</label><label class="f">Target jumlah unit diambil<input id="tg-unit" type="number" min="0" step="1" data-tg="unit" value="'+(+T.unit||0)+'"></label></div><span class="small muted">Kemajuan tampil sebagai bar di Laporan, Nota, dan beranda tim. Tim hanya melihat persen dan jumlah unit, bukan nominal rupiah. Isi 0 untuk mematikan.</span></section>'+
- '<section class="card stack"><h2>Pengingat unit belum diambil</h2><div class="grid"><label class="f">Pengingat 1 (hari setelah selesai)<input id="id-1" type="number" min="1" data-c="idleD1" value="'+(+cfg.idleD1||3)+'"></label><label class="f">Pengingat 2 (hari)<input id="id-2" type="number" min="1" data-c="idleD2" value="'+(+cfg.idleD2||7)+'"></label><label class="f">Pengingat 3 (hari)<input id="id-3" type="number" min="1" data-c="idleD3" value="'+(+cfg.idleD3||30)+'"></label></div>'+
- '<label class="f">Ketentuan unit tidak diambil (dipakai di pesan tahap 3)<textarea id="id-terms" data-c="storeTerms">'+esc(cfg.storeTerms||'')+'</textarea></label></section>';}
+ '<section class="card stack"><h2>Pengingat unit belum diambil</h2><div class="grid"><label class="f">Pengingat 1 (hari setelah selesai)<input id="id-1" type="number" min="1" data-c="idleD1" value="'+(+cfg.idleD1||3)+'"></label><label class="f">Pengingat 2 (hari)<input id="id-2" type="number" min="1" data-c="idleD2" value="'+(+cfg.idleD2||7)+'"></label><label class="f">Pengingat 3 (hari)<input id="id-3" type="number" min="1" data-c="idleD3" value="'+(+cfg.idleD3||30)+'"></label><label class="f">Batas unit tidak diambil (hari)<input id="id-hold" type="number" min="1" data-c="holdDays" value="'+(+cfg.holdDays||30)+'"></label></div>'+
+ '<label class="f">Catatan tambahan di pesan tahap 3 (boleh dikosongkan; batas hari sudah otomatis)<textarea id="id-terms" data-c="storeTerms">'+esc(cfg.storeTerms||'')+'</textarea></label></section>';}
 
 /* ---------- Grafik (SVG tanpa pustaka) ---------- */
 function shortRp(n){var a=Math.abs(n),s=n<0?'-':'';if(a>=1e9)return s+(a/1e9).toFixed(1).replace('.',',')+'M';if(a>=1e6)return s+(a/1e6).toFixed(a>=1e7?0:1).replace('.',',')+'jt';if(a>=1e3)return s+Math.round(a/1e3)+'rb';return s+Math.round(a);}
@@ -3600,12 +3714,12 @@ function reportHTML(m){
  var cats=Object.keys(st.byCat).sort(function(a,b){return st.byCat[b]-st.byCat[a];});
  h+='<h2>5. Pengeluaran per kategori</h2>'+(cats.length?'<table class="grid"><tbody>'+cats.map(function(c){return'<tr><td>'+esc(c)+'</td><td class="r">'+rp(st.byCat[c])+'</td></tr>';}).join('')+'<tr class="tot"><td>Total</td><td class="r">'+rp(st.exp)+'</td></tr></tbody></table>':'<p class="note">Tidak ada pengeluaran tercatat.</p>');
  var dk=Object.keys(st.days).sort();
- h+='<h2>6. Rincian per hari</h2>'+(dk.length?'<table class="grid"><thead><tr><th>Tanggal</th><th class="r">Masuk</th><th class="r">Diambil</th><th class="r">Batal</th><th class="r">Omzet</th><th class="r">Laba bersih</th><th class="r">Teknisi</th><th class="r">Toko</th></tr></thead><tbody>'+dk.map(function(d){var r=st.days[d];return'<tr><td>'+HARI[pd(d).getDay()].slice(0,3)+', '+fdate(d)+'</td><td class="r">'+r.masuk+'</td><td class="r">'+r.selesai+'</td><td class="r">'+r.batal+'</td><td class="r">'+nm(r.total)+'</td><td class="r">'+nm(r.net)+'</td><td class="r">'+nm(r.tech)+'</td><td class="r">'+nm(r.shop)+'</td></tr>';}).join('')+'</tbody></table>':'<p class="note">Belum ada aktivitas.</p>');
+ h+=repWeekHTML(st,m)+'<h2>6b. Rincian per hari</h2>'+(dk.length?'<table class="grid"><thead><tr><th>Tanggal</th><th class="r">Masuk</th><th class="r">Diambil</th><th class="r">Batal</th><th class="r">Omzet</th><th class="r">Laba bersih</th><th class="r">Teknisi</th><th class="r">Toko</th></tr></thead><tbody>'+dk.map(function(d){var r=st.days[d];return'<tr><td>'+HARI[pd(d).getDay()].slice(0,3)+', '+fdate(d)+'</td><td class="r">'+r.masuk+'</td><td class="r">'+r.selesai+'</td><td class="r">'+r.batal+'</td><td class="r">'+nm(r.total)+'</td><td class="r">'+nm(r.net)+'</td><td class="r">'+nm(r.tech)+'</td><td class="r">'+nm(r.shop)+'</td></tr>';}).join('')+repTotRow(st,dk)+'</tbody></table>':'<p class="note">Belum ada aktivitas.</p>');
  var tg=tgtCalc(m,st);
  if(tg.has)h+='<h2>7. Target bulanan</h2><table class="kv">'+((+cfg.target.omzet>0)?tr('Omzet',rp(st.total)+' dari '+rp(cfg.target.omzet)+' ('+tg.p+'%)'):'')+(tg.tu>0?tr('Unit diambil',st.nSelesai+' dari '+tg.tu+' ('+tg.pu+'%)'):'')+'</table>';
  h+='<h2>'+(tg.has?'8':'7')+'. Tren 6 bulan</h2><div class="rp-chart">'+barChart(T.map(function(x){return x.label;}),[{name:'Omzet',color:PALP[0],vals:T.map(function(x){return x.st.total;})},{name:'Laba bersih toko',color:PALP[1],vals:T.map(function(x){return x.st.netShop;})}],{label:'Tren omzet dan laba bersih toko',grid:'#bbb'})+'</div>';
  h+='<h2>'+(tg.has?'9':'8')+'. Stok sparepart</h2><table class="kv">'+tr('Jenis sparepart',stks.length)+tr('Nilai persediaan (harga beli)',rp(stks.reduce(function(x,s){return x+Math.max(0,stkOn(s))*(+s.cost||0);},0)))+tr('Menipis / habis',low.length?low.map(function(s){return esc(s.name)+' ('+Math.max(0,stkOn(s))+')';}).join(', '):'Tidak ada')+'</table>';
- h+='<div class="rp-sign"><div>Dibuat: '+esc(fdate(iso(new Date())))+'</div><div style="text-align:center">Pemilik<br><br><br><br>(................................)</div></div><div class="rp-foot">Laporan dibuat otomatis oleh Kasir Servis Pro · '+esc(cfg.shop)+'</div></div>';
+ h+='<div class="rp-sign"><div>Dibuat: '+esc(fdate(iso(new Date())))+'</div><div style="text-align:center">Pemilik<div style="height:16mm"></div>(................................)</div></div><div class="rp-foot">Laporan dibuat otomatis oleh Kasir Servis Pro · '+esc(cfg.shop)+'</div></div>';
  return h;}
 function printReport(){
  var pa=document.getElementById('printarea');if(!pa){pa=document.createElement('div');pa.id='printarea';document.body.appendChild(pa);}
