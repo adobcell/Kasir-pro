@@ -3395,7 +3395,7 @@ function absProofCard(){
 function absAdminCard(){return absAdminCard0()+absProofCard();}
 function vAbsenOwner(){return'<section class="card stack">'+geoBox()+'</section><section class="card"><span class="small muted">Rekap kehadiran seluruh tim. Owner bisa mengisi/mengoreksi hadir, izin, sakit, atau alpa tiap karyawan.</span></section>'+absAdminCard();}
 /* ===== v10.19: pembaruan otomatis dari GitHub ===== */
-var APP_VER='10.28';
+var APP_VER='10.29';
 function verOf(h){var m=/APP_VER='([^']+)'/.exec(h||'');return m?m[1]:'';}
 var updBusy=false,updLast=0;
 function applyUpdate(){
@@ -3492,7 +3492,7 @@ function devCkSet(v){try{document.cookie='kp_dev='+v+'; max-age=63072000; path=/
 })();
 
 /* ===== v10.28 (ADOB CELL): Atur > Lisensi (pembuat kode lisensi untuk member netral) ===== */
-var LA={has:null,busy:false,msg:'',err:false,hw:'',nm:'',wa:'',pk:'trial',dy:'',pin:'',key:'',last:null};
+var LA={mem:null,memBusy:false,memErr:'',has:null,busy:false,msg:'',err:false,hw:'',nm:'',wa:'',pk:'trial',dy:'',pin:'',key:'',last:null};
 var LA_DAYS={trial:30,bulan:30,tahun:365,seumur:0};
 var LA_PLAN={trial:'Trial 1 Bulan',bulan:'Pro 1 Bulan',tahun:'Pro 1 Tahun',seumur:'Seumur hidup',kustom:'Kustom'};
 function laFmt(ms){return ms?new Date(ms).toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}):'Seumur hidup';}
@@ -3502,7 +3502,26 @@ function laDb(){return new Promise(function(res,rej){try{var r=indexedDB.open('k
 function laGet(){return laDb().then(function(db){return new Promise(function(res){var g=db.transaction('k').objectStore('k').get('priv');g.onsuccess=function(){res(g.result||null);};g.onerror=function(){res(null);};});}).catch(function(){return null;});}
 function laPut(k){return laDb().then(function(db){return new Promise(function(res,rej){var t=db.transaction('k','readwrite');t.objectStore('k').put(k,'priv');t.oncomplete=function(){res();};t.onerror=function(){rej(t.error);};});});}
 function laDel(){return laDb().then(function(db){return new Promise(function(res){var t=db.transaction('k','readwrite');t.objectStore('k').delete('priv');t.oncomplete=function(){res();};t.onerror=function(){res();};});}).catch(function(){});}
-function laInit(){if(LA.has!==null||LA.busy)return;LA.busy=true;laGet().then(function(k){LA.has=!!k;LA.busy=false;if(tab==='atur'&&aturTab==='lisensi')render();});}
+function laMemLoad(){if(!hasServer()||LA.memBusy)return;LA.memBusy=true;LA.memErr='';
+ api({action:'mem_list'}).then(function(r){LA.memBusy=false;
+  if(r&&r.error==='auth'){sessionExpired();return;}
+  if(r&&r.ok){var seen={},o=[];r.list.forEach(function(x){if(!seen[x.hwid]){seen[x.hwid]=1;x.n=0;o.push(x);}else{for(var i=0;i<o.length;i++)if(o[i].hwid===x.hwid)o[i].n++;}});LA.mem=o;}
+  else LA.memErr=errMsg(r&&r.error);
+  if(tab==='atur'&&aturTab==='lisensi')render();}).catch(function(){LA.memBusy=false;LA.memErr='Tidak dapat menghubungi server.';if(tab==='atur'&&aturTab==='lisensi')render();});}
+function laInit(){if(LA.mem===null&&!LA.memBusy&&!LA.memErr)laMemLoad();if(LA.has!==null||LA.busy)return;LA.busy=true;laGet().then(function(k){LA.has=!!k;LA.busy=false;if(tab==='atur'&&aturTab==='lisensi')render();});}
+function laMemCard(){
+ var h='<section class="card stack"><h3 style="margin:0">Daftar member netral</h3>';
+ if(!hasServer())return h+'<p class="muted small" style="margin:0">Hubungkan Google Sheets dulu (Atur › Google Sheets) agar daftar member tercatat di tab "Member Netral".</p></section>';
+ h+='<p class="small muted" style="margin:0">Dicatat otomatis di tab <b>Member Netral</b> pada Google Sheet toko setiap kali kode diterbitkan. Status dihitung dari masa berlaku kode.</p>';
+ if(LA.memBusy&&!LA.mem)h+='<p class="muted small" style="margin:0">Memuat…</p>';
+ if(LA.memErr)h+='<p class="small" style="margin:0;color:var(--bad,#c00)">'+esc(LA.memErr)+'</p>';
+ if(LA.mem&&!LA.mem.length)h+='<p class="muted small" style="margin:0">Belum ada member tercatat.</p>';
+ if(LA.mem&&LA.mem.length){var act=LA.mem.filter(function(x){return x.aktif;}).length;
+  h+='<div class="small"><b>'+act+'</b> aktif · <b>'+(LA.mem.length-act)+'</b> kedaluwarsa · '+LA.mem.length+' perangkat</div>';
+  h+=LA.mem.map(function(x,i){var left=x.e?(x.sisa+' hari lagi'):'tanpa batas';
+   return'<div class="small" style="border-top:1px solid var(--line,#ddd);padding:8px 0;display:grid;gap:4px"><div><b>'+esc(x.nama)+'</b> <span class="badge '+(x.aktif?(x.e&&x.sisa<=7?'warn':'good'):'bad')+'">'+(x.aktif?(x.e&&x.sisa<=7?'Segera habis':'Aktif'):'Kedaluwarsa')+'</span></div><span class="muted">'+esc(x.hwid)+' · '+esc(x.paket)+' · '+(x.aktif?esc(left):'berakhir '+esc(laFmt(x.e)))+(x.wa?' · '+esc(x.wa):'')+(x.n?' · '+x.n+'x diterbitkan ulang':'')+'</span><div class="row"><button class="btn sm" data-act="la-ren" data-v="'+i+'">Perpanjang</button></div></div>';}).join('');}
+ h+='<div class="row"><button class="btn sm" data-act="la-memload"'+(LA.memBusy?' disabled':'')+'>Muat ulang daftar</button></div></section>';
+ return h;}
 function laCard(){
  if(!isAdmin())return'<section class="card"><p class="muted">Hanya Owner yang dapat membuat kode lisensi.</p></section>';
  laInit();
@@ -3522,8 +3541,9 @@ function laCard(){
  (LA.msg?'<p class="small" style="margin:0;color:var(--'+(LA.err?'bad':'good')+',inherit)">'+esc(LA.msg)+'</p>':'');
  if(LA.key)h+='<textarea id="la-ko" readonly rows="5" style="width:100%;font-family:monospace;font-size:11px">'+esc(LA.key)+'</textarea><div class="row"><button class="btn sm pri" data-act="la-copy">Salin kode</button><button class="btn sm" data-act="la-wa">Kirim lewat WhatsApp</button></div>';
  h+='</section>';
+ h+=laMemCard();
  var H=laHist().slice().reverse().slice(0,20);
- h+='<section class="card stack"><h3 style="margin:0">Riwayat penerbitan</h3>'+(H.length?H.map(function(r){return'<div class="small" style="border-top:1px solid var(--line,#ddd);padding:6px 0"><b>'+esc(r.n)+'</b> · '+esc(LA_PLAN[r.p]||r.p)+'<br><span class="muted">'+esc(r.h)+' · berlaku sampai '+esc(laFmt(r.e))+'</span></div>';}).join('')+'<div class="row"><button class="btn sm" data-act="la-csv">Unduh CSV</button></div>':'<p class="muted small" style="margin:0">Belum ada kode yang diterbitkan dari perangkat ini.</p>')+'</section>';
+ h+='<section class="card stack"><h3 style="margin:0">Riwayat di perangkat ini</h3>'+(H.length?H.map(function(r){return'<div class="small" style="border-top:1px solid var(--line,#ddd);padding:6px 0"><b>'+esc(r.n)+'</b> · '+esc(LA_PLAN[r.p]||r.p)+'<br><span class="muted">'+esc(r.h)+' · berlaku sampai '+esc(laFmt(r.e))+'</span></div>';}).join('')+'<div class="row"><button class="btn sm" data-act="la-csv">Unduh CSV</button></div>':'<p class="muted small" style="margin:0">Belum ada kode yang diterbitkan dari perangkat ini.</p>')+'</section>';
  return h;}
 document.addEventListener('input',function(e){var t=e.target;if(!t||!t.id||t.id.indexOf('la-')!==0)return;
  var m={'la-hw':'hw','la-nm':'nm','la-wa':'wa','la-dy':'dy','la-pin':'pin'}[t.id];if(m)LA[m]=t.value;});
@@ -3536,6 +3556,8 @@ document.addEventListener('change',function(e){var t=e.target;if(!t||!t.id)retur
 document.addEventListener('click',function(e){
  var b=e.target.closest&&e.target.closest('[data-act^="la-"]');if(!b)return;var a=b.dataset.act;
  if(!isAdmin())return;
+ if(a==='la-memload'){LA.memErr='';LA.mem=null;laMemLoad();render();return;}
+ if(a==='la-ren'){var m=LA.mem&&LA.mem[+b.dataset.v];if(m){LA.hw=m.hwid;LA.nm=m.nama;LA.wa=m.wa||'';LA.pk='bulan';LA.key='';LA.msg='Data member diisi. Pilih paket lalu terbitkan kode baru.';LA.err=false;render();window.scrollTo(0,0);}return;}
  if(a==='la-forget'){laDel().then(function(){LA.has=false;LA.msg='Kunci dihapus dari perangkat ini.';LA.err=false;LA.key='';render();});return;}
  if(a==='la-copy'){var t=document.getElementById('la-ko');if(!t)return;try{navigator.clipboard.writeText(t.value).then(function(){toast('Kode disalin.');},function(){t.select();});}catch(x){t.select();}return;}
  if(a==='la-wa'){if(!LA.last)return;var n=String(LA.wa||'').replace(/\D/g,'');if(n.indexOf('0')===0)n='62'+n.slice(1);
@@ -3560,7 +3582,13 @@ document.addEventListener('click',function(e){
     LA.key=data+'.'+laB64u(sig);LA.last=pl;LA.msg='Kode dibuat. Berlaku sampai: '+laFmt(pl.e)+'.'+warn;LA.err=!!warn&&false;LA.pin='';
     H0.push({i:now,n:nm,h:hw,p:pk,e:pl.e,wa:String(LA.wa||'').trim()});try{localStorage.setItem('kp-lic-hist',JSON.stringify(H0));}catch(x){}
     try{logAct('Terbitkan lisensi netral',nm+' · '+(LA_PLAN[pk]||pk));}catch(x){}
-    render();});
+    render();
+    if(hasServer())api({action:'mem_add',nama:nm,hwid:hw,wa:String(LA.wa||'').trim(),paket:LA_PLAN[pk]||pk,e:pl.e}).then(function(r){
+     if(r&&r.error==='auth'){sessionExpired();return;}
+     if(r&&r.ok){LA.msg+=' Tercatat di Sheet.';LA.mem=null;LA.memErr='';laMemLoad();}
+     else{LA.msg+=' Belum tercatat di Sheet ('+errMsg(r&&r.error)+'). Kode tetap sah dan ada di riwayat perangkat ini.';LA.err=true;}
+     if(tab==='atur'&&aturTab==='lisensi')render();}).catch(function(){LA.msg+=' Belum tercatat di Sheet (server tidak terjangkau). Kode tetap sah.';LA.err=true;if(tab==='atur'&&aturTab==='lisensi')render();});
+    });
   }).catch(function(){fail('Gagal membuat kode.');});}
 });
 
