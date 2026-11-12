@@ -2850,12 +2850,13 @@ function stCls(t){return' st-'+String(statusOf(t)||'').toLowerCase().replace(/[^
 var DEVLOST=0,DEV={list:null,users:[],devLock:true,ownerLock:false,me:'',busy:false,err:'',at:0,armed:null,tried:false};
 function devId(){
  var k='kp-dev',v='';try{v=localStorage.getItem(k)||'';}catch(e){}
+ if(!/^[A-Za-z0-9]{20,40}$/.test(v)){v=devCk();if(v){try{localStorage.setItem(k,v);}catch(e){}}}
  if(!/^[A-Za-z0-9]{20,40}$/.test(v)){
   var al='ABCDEFGHJKMNPQRSTVWXYZ23456789',a=new Uint8Array(24);
   try{crypto.getRandomValues(a);}catch(e){for(var i=0;i<24;i++)a[i]=Math.floor(Math.random()*256);}
   v='';for(var j=0;j<24;j++)v+=al.charAt(a[j]%al.length);
   try{localStorage.setItem(k,v);}catch(e){}}
- return v;}
+ devCkSet(v);return v;}
 function devCode(){var v=devId();return v.slice(0,4)+'-'+v.slice(4,8);}
 function devGuess(){
  var u=navigator.userAgent||'',os=/Android/.test(u)?'Android':/iPhone|iPad/.test(u)?'iOS':/Windows/.test(u)?'Windows':/Mac OS/.test(u)?'Mac':/Linux/.test(u)?'Linux':'Perangkat';
@@ -3393,7 +3394,7 @@ function absProofCard(){
 function absAdminCard(){return absAdminCard0()+absProofCard();}
 function vAbsenOwner(){return'<section class="card stack">'+geoBox()+'</section><section class="card"><span class="small muted">Rekap kehadiran seluruh tim. Owner bisa mengisi/mengoreksi hadir, izin, sakit, atau alpa tiap karyawan.</span></section>'+absAdminCard();}
 /* ===== v10.19: pembaruan otomatis dari GitHub ===== */
-var APP_VER='10.24';
+var APP_VER='10.27';
 function verOf(h){var m=/APP_VER='([^']+)'/.exec(h||'');return m?m[1]:'';}
 var updBusy=false,updLast=0;
 function applyUpdate(){
@@ -3469,6 +3470,25 @@ function repWeekHTML(st,m){
 
 /* ===== v10.24: penanda halaman untuk tata letak PC ===== */
 function render(){try{document.body.setAttribute('data-tab',(typeof tab!=='undefined'?tab:''));}catch(e){}return render0();}
+
+/* ===== v10.27: kode perangkat tahan hapus data (localStorage + cookie + IndexedDB + penyimpanan permanen) ===== */
+var DEV_RE=/^[A-Za-z0-9]{20,40}$/;
+function devCk(){try{var m=/(?:^|;\s*)kp_dev=([A-Za-z0-9]+)/.exec(document.cookie||'');return m&&DEV_RE.test(m[1])?m[1]:'';}catch(e){return'';}}
+function devCkSet(v){try{document.cookie='kp_dev='+v+'; max-age=63072000; path=/; SameSite=Lax'+(location.protocol==='https:'?'; Secure':'');}catch(e){}}
+(function(){
+ try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
+ function open(cb){try{var r=indexedDB.open('kp-meta',1);r.onupgradeneeded=function(){r.result.createObjectStore('k');};r.onsuccess=function(){cb(r.result);};r.onerror=function(){cb(null);};}catch(e){cb(null);}}
+ function sync(){var cur=devId();
+  open(function(db){if(!db)return;
+   try{var st=db.transaction('k','readwrite').objectStore('k'),g=st.get('dev');
+    g.onsuccess=function(){var old=g.result;
+     if(old&&DEV_RE.test(old)&&old!==cur){
+      try{localStorage.setItem('kp-dev',old);}catch(e){}devCkSet(old);
+      try{if(!AUTH||AUTH.local||!hasServer()||!AUTH.session)render();}catch(e){}
+     }else if(old!==cur){st.put(cur,'dev');}};
+   }catch(e){}});}
+ setTimeout(sync,250);
+})();
 
 /* ================= v8: stok, foto, pelacakan, pengingat, absensi, target, grafik, laporan, cadangan, aktivitas ================= */
 var ABSL={hadir:'Hadir',telat:'Telat',izin:'Izin',sakit:'Sakit',alpa:'Alpa',libur:'Libur'};
