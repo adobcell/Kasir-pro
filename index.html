@@ -1453,10 +1453,11 @@ function aturBody(){
  if(aturTab==='aktivitas')h+=audHTML();
  if(aturTab==='tertib')h+=tertibEditor()+'<section class="card">'+tertibHTML()+'</section>';
  if(aturTab==='sop')h+=sopAdminCard();
+ if(aturTab==='lisensi')h+=laCard();
  if(aturTab==='sop')h+='<section class="card stack"><h2>SOP &amp; tata tertib '+esc(cfg.shop)+'</h2><span class="badge '+(PREFS.sopSetujui?'good':'warn')+'">'+(PREFS.sopSetujui?'SOP sudah disetujui di perangkat ini':'Belum menyetujui SOP')+'</span>'+sopContent()+'</section>';
  return h;}
 function vAtur(){
- var tabs=isFront()?[['printer','Printer'],['tampilan','Tampilan']]:[['toko','Toko & tarif'],['pengguna','Pengguna'],['perangkat','Perangkat'],['tampilan','Tampilan'],['printer','Printer'],['sheets','Google Sheets'],['data','Data'],['aktivitas','Aktivitas'],['sop','SOP'],['tertib','Tata tertib']];
+ var tabs=isFront()?[['printer','Printer'],['tampilan','Tampilan']]:[['toko','Toko & tarif'],['pengguna','Pengguna'],['perangkat','Perangkat'],['tampilan','Tampilan'],['printer','Printer'],['sheets','Google Sheets'],['data','Data'],['aktivitas','Aktivitas'],['sop','SOP'],['tertib','Tata tertib']].concat(isAdmin()?[['lisensi','Lisensi']]:[]);
  return'<section class="card"><div class="chips">'+tabs.map(function(t){return'<button class="chip" data-act="atur" data-v="'+t[0]+'" aria-pressed="'+(aturTab===t[0])+'">'+esc(t[1])+'</button>';}).join('')+'</div><p class="muted small" style="margin:8px 0 0">'+(isFront()?'Pengaturan printer dan tampilan untuk perangkat ini.':'Semua isian di menu Atur tersimpan otomatis begitu diubah.')+'</p></section>'+aturBody();}
 
 /* ===== Login, keluar, dan kelola pengguna ===== */
@@ -3394,7 +3395,7 @@ function absProofCard(){
 function absAdminCard(){return absAdminCard0()+absProofCard();}
 function vAbsenOwner(){return'<section class="card stack">'+geoBox()+'</section><section class="card"><span class="small muted">Rekap kehadiran seluruh tim. Owner bisa mengisi/mengoreksi hadir, izin, sakit, atau alpa tiap karyawan.</span></section>'+absAdminCard();}
 /* ===== v10.19: pembaruan otomatis dari GitHub ===== */
-var APP_VER='10.27';
+var APP_VER='10.28';
 function verOf(h){var m=/APP_VER='([^']+)'/.exec(h||'');return m?m[1]:'';}
 var updBusy=false,updLast=0;
 function applyUpdate(){
@@ -3489,6 +3490,79 @@ function devCkSet(v){try{document.cookie='kp_dev='+v+'; max-age=63072000; path=/
    }catch(e){}});}
  setTimeout(sync,250);
 })();
+
+/* ===== v10.28 (ADOB CELL): Atur > Lisensi (pembuat kode lisensi untuk member netral) ===== */
+var LA={has:null,busy:false,msg:'',err:false,hw:'',nm:'',wa:'',pk:'trial',dy:'',pin:'',key:'',last:null};
+var LA_DAYS={trial:30,bulan:30,tahun:365,seumur:0};
+var LA_PLAN={trial:'Trial 1 Bulan',bulan:'Pro 1 Bulan',tahun:'Pro 1 Tahun',seumur:'Seumur hidup',kustom:'Kustom'};
+function laFmt(ms){return ms?new Date(ms).toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}):'Seumur hidup';}
+function laB64u(buf){var b=new Uint8Array(buf),s='';for(var i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+function laHist(){try{return JSON.parse(localStorage.getItem('kp-lic-hist')||'[]');}catch(e){return[];}}
+function laDb(){return new Promise(function(res,rej){try{var r=indexedDB.open('kp-lic-adm',1);r.onupgradeneeded=function(){r.result.createObjectStore('k');};r.onsuccess=function(){res(r.result);};r.onerror=function(){rej(r.error);};}catch(e){rej(e);}});}
+function laGet(){return laDb().then(function(db){return new Promise(function(res){var g=db.transaction('k').objectStore('k').get('priv');g.onsuccess=function(){res(g.result||null);};g.onerror=function(){res(null);};});}).catch(function(){return null;});}
+function laPut(k){return laDb().then(function(db){return new Promise(function(res,rej){var t=db.transaction('k','readwrite');t.objectStore('k').put(k,'priv');t.oncomplete=function(){res();};t.onerror=function(){rej(t.error);};});});}
+function laDel(){return laDb().then(function(db){return new Promise(function(res){var t=db.transaction('k','readwrite');t.objectStore('k').delete('priv');t.oncomplete=function(){res();};t.onerror=function(){res();};});}).catch(function(){});}
+function laInit(){if(LA.has!==null||LA.busy)return;LA.busy=true;laGet().then(function(k){LA.has=!!k;LA.busy=false;if(tab==='atur'&&aturTab==='lisensi')render();});}
+function laCard(){
+ if(!isAdmin())return'<section class="card"><p class="muted">Hanya Owner yang dapat membuat kode lisensi.</p></section>';
+ laInit();
+ var h='<section class="card stack"><h2>Kode lisensi untuk member netral</h2><p class="small muted" style="margin:0">Buat kode aktivasi dari HWID yang dikirim member. Kunci privat tersimpan di perangkat ini dalam bentuk yang tidak bisa dibaca ulang, dan file kuncinya tetap Anda simpan sendiri sebagai cadangan.</p></section>';
+ h+='<section class="card stack"><h3 style="margin:0">1. Kunci penanda tangan</h3>';
+ if(LA.has)h+='<span class="badge good">Kunci aktif di perangkat ini</span><div class="row"><button class="btn sm" data-act="la-forget">Lupakan kunci di perangkat ini</button></div>';
+ else h+='<span class="badge warn">'+(LA.has===null?'Memeriksa…':'Belum ada kunci')+'</span><label class="f">Pilih file KUNCI-PRIVAT-ADMIN.json<input id="la-kf" type="file" accept=".json,application/json"></label>';
+ h+='</section>';
+ h+='<section class="card stack"><h3 style="margin:0">2. Buat kode</h3>'+
+ '<label class="f">HWID perangkat (dari layar aktivasi member)<input id="la-hw" value="'+esc(LA.hw)+'" placeholder="KS-XXXX-XXXX-XXXX" autocapitalize="characters" autocomplete="off"></label>'+
+ '<label class="f">Nama pelanggan / bengkel<input id="la-nm" value="'+esc(LA.nm)+'" autocomplete="off"></label>'+
+ '<label class="f">No. WhatsApp pelanggan (opsional)<input id="la-wa" value="'+esc(LA.wa)+'" inputmode="tel" placeholder="08xxxxxxxxxx" autocomplete="off"></label>'+
+ '<label class="f">Paket<select id="la-pk">'+Object.keys(LA_PLAN).map(function(k){return'<option value="'+k+'"'+(LA.pk===k?' selected':'')+'>'+LA_PLAN[k]+(k==='trial'?' (gratis, 30 hari)':k==='bulan'?' (30 hari)':k==='tahun'?' (365 hari)':k==='kustom'?' (isi jumlah hari)':'')+'</option>';}).join('')+'</select></label>'+
+ (LA.pk==='kustom'?'<label class="f">Jumlah hari<input id="la-dy" type="number" min="1" value="'+esc(LA.dy)+'"></label>':'')+
+ (cfg.ownerPinH?'<label class="f">PIN Owner<input id="la-pin" type="password" inputmode="numeric" value="'+esc(LA.pin)+'" autocomplete="off"></label>':'')+
+ '<div class="row"><button class="btn pri" data-act="la-gen"'+(LA.has?'':' disabled')+'>Buat &amp; terbitkan kode</button></div>'+
+ (LA.msg?'<p class="small" style="margin:0;color:var(--'+(LA.err?'bad':'good')+',inherit)">'+esc(LA.msg)+'</p>':'');
+ if(LA.key)h+='<textarea id="la-ko" readonly rows="5" style="width:100%;font-family:monospace;font-size:11px">'+esc(LA.key)+'</textarea><div class="row"><button class="btn sm pri" data-act="la-copy">Salin kode</button><button class="btn sm" data-act="la-wa">Kirim lewat WhatsApp</button></div>';
+ h+='</section>';
+ var H=laHist().slice().reverse().slice(0,20);
+ h+='<section class="card stack"><h3 style="margin:0">Riwayat penerbitan</h3>'+(H.length?H.map(function(r){return'<div class="small" style="border-top:1px solid var(--line,#ddd);padding:6px 0"><b>'+esc(r.n)+'</b> · '+esc(LA_PLAN[r.p]||r.p)+'<br><span class="muted">'+esc(r.h)+' · berlaku sampai '+esc(laFmt(r.e))+'</span></div>';}).join('')+'<div class="row"><button class="btn sm" data-act="la-csv">Unduh CSV</button></div>':'<p class="muted small" style="margin:0">Belum ada kode yang diterbitkan dari perangkat ini.</p>')+'</section>';
+ return h;}
+document.addEventListener('input',function(e){var t=e.target;if(!t||!t.id||t.id.indexOf('la-')!==0)return;
+ var m={'la-hw':'hw','la-nm':'nm','la-wa':'wa','la-dy':'dy','la-pin':'pin'}[t.id];if(m)LA[m]=t.value;});
+document.addEventListener('change',function(e){var t=e.target;if(!t||!t.id)return;
+ if(t.id==='la-pk'){LA.pk=t.value;render();}
+ if(t.id==='la-kf'&&t.files&&t.files[0]){var f=t.files[0];
+  f.text().then(function(x){var j=JSON.parse(x);return crypto.subtle.importKey('jwk',j,{name:'ECDSA',namedCurve:'P-256'},false,['sign']);})
+  .then(function(k){return laPut(k);}).then(function(){LA.has=true;LA.msg='Kunci tersimpan di perangkat ini.';LA.err=false;render();})
+  .catch(function(){LA.msg='File kunci tidak valid.';LA.err=true;render();});}});
+document.addEventListener('click',function(e){
+ var b=e.target.closest&&e.target.closest('[data-act^="la-"]');if(!b)return;var a=b.dataset.act;
+ if(!isAdmin())return;
+ if(a==='la-forget'){laDel().then(function(){LA.has=false;LA.msg='Kunci dihapus dari perangkat ini.';LA.err=false;LA.key='';render();});return;}
+ if(a==='la-copy'){var t=document.getElementById('la-ko');if(!t)return;try{navigator.clipboard.writeText(t.value).then(function(){toast('Kode disalin.');},function(){t.select();});}catch(x){t.select();}return;}
+ if(a==='la-wa'){if(!LA.last)return;var n=String(LA.wa||'').replace(/\D/g,'');if(n.indexOf('0')===0)n='62'+n.slice(1);
+  var tx='Halo '+LA.last.n+', berikut kode lisensi Kasir Servis Pro ('+(LA_PLAN[LA.last.p]||LA.last.p)+', berlaku sampai '+laFmt(LA.last.e)+').\nSalin seluruh kode di bawah, lalu tempel di layar aktivasi:\n\n'+LA.key;
+  window.open('https://wa.me/'+n+'?text='+encodeURIComponent(tx),'_blank');return;}
+ if(a==='la-csv'){var H=laHist(),csv='Tanggal terbit,Nama,HWID,Paket,Berlaku sampai,WhatsApp\n'+H.map(function(r){return[new Date(r.i).toISOString().slice(0,10),r.n,r.h,r.p,r.e?new Date(r.e).toISOString().slice(0,10):'seumur hidup',r.wa||''].map(function(v){return'"'+String(v).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+  var u=URL.createObjectURL(new Blob([csv],{type:'text/csv'})),l=document.createElement('a');l.href=u;l.download='riwayat-lisensi.csv';l.click();return;}
+ if(a==='la-gen'){
+  var hw=String(LA.hw).trim().toUpperCase(),nm=String(LA.nm).trim(),pk=LA.pk;
+  var fail=function(m){LA.msg=m;LA.err=true;LA.key='';render();};
+  if(cfg.ownerPinH&&!ownerOK(LA.pin))return fail('PIN Owner salah.');
+  if(!/^KS-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}$/.test(hw))return fail('Format HWID salah. Contoh: KS-6A51-C375-B1F9');
+  if(!nm)return fail('Isi nama pelanggan.');
+  var days=pk==='kustom'?Math.floor(+LA.dy):LA_DAYS[pk];
+  if(pk==='kustom'&&!(days>0))return fail('Jumlah hari harus lebih dari 0.');
+  var H0=laHist(),warn=(pk==='trial'&&H0.some(function(r){return r.h===hw&&r.p==='trial';}))?' Peringatan: HWID ini pernah mendapat trial.':'';
+  laGet().then(function(priv){
+   if(!priv)return fail('Kunci belum dipasang.');
+   var now=Date.now(),pl={h:hw,p:pk,n:nm,i:now,e:days?now+days*864e5:0};
+   var data='KSP1.'+laB64u(new TextEncoder().encode(JSON.stringify(pl)));
+   return crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},priv,new TextEncoder().encode(data)).then(function(sig){
+    LA.key=data+'.'+laB64u(sig);LA.last=pl;LA.msg='Kode dibuat. Berlaku sampai: '+laFmt(pl.e)+'.'+warn;LA.err=!!warn&&false;LA.pin='';
+    H0.push({i:now,n:nm,h:hw,p:pk,e:pl.e,wa:String(LA.wa||'').trim()});try{localStorage.setItem('kp-lic-hist',JSON.stringify(H0));}catch(x){}
+    try{logAct('Terbitkan lisensi netral',nm+' · '+(LA_PLAN[pk]||pk));}catch(x){}
+    render();});
+  }).catch(function(){fail('Gagal membuat kode.');});}
+});
 
 /* ================= v8: stok, foto, pelacakan, pengingat, absensi, target, grafik, laporan, cadangan, aktivitas ================= */
 var ABSL={hadir:'Hadir',telat:'Telat',izin:'Izin',sakit:'Sakit',alpa:'Alpa',libur:'Libur'};
