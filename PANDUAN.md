@@ -69,6 +69,22 @@ Isian di Input Data (semua opsional, cukup ketuk): kunci layar (tombol Tidak ada
 | Peran | Menu | Batas |
 |---|---|---|
 | **Owner** | Input, Nota, Stok, **Absen**, Gaji, Biaya, Laporan, Atur (Toko & tarif, Pengguna, **Perangkat**, Printer, Sheets, Data, Aktivitas, SOP, Tata tertib) | Akses penuh ke semua menu |
-| **Admin depan** | Input Data, Nota, Stok (lihat), Absen, SOP, Printer/Tampilan; kartu **Tugas hari ini** di Input Data | Tidak melihat gaji, kasbon, biaya toko, laporan, laba, modal stok, tarif bagi hasil; tidak mengelola pengguna/perangkat. Mengubah/membatalkan nota selesai wajib PIN Owner; hapus permanen hanya Owner. Server hanya menerima data Nota darinya |
-| **Teknisi** | Ringkasan, Pekerjaan, Absen, Kasbon, SOP, Tertib | Hanya nota dan penghasilan miliknya sendiri; tanpa data kontak pelanggan, foto, atau gaji orang lain |
+| **Admin depan** | Input Data (+ 📋 Katalog harga), Nota (buat, edit, cetak, WhatsApp, status), **Kasbon (hanya input kasbon baru)**, Stok (lihat), Absen, SOP, Printer/Tampilan; kartu **Tugas hari ini** di Input Data | Tidak melihat gaji, saldo/riwayat/total kasbon, biaya toko, laporan, laba, modal stok, tarif bagi hasil; tidak mengelola pengguna/perangkat. Mengubah/membatalkan nota selesai wajib PIN Owner; hapus permanen hanya Owner. Server hanya menerima data Nota darinya, ditambah baris kasbon baru (tidak bisa mengubah atau menghapus kasbon, dan tidak bisa mencatat potong gaji). Kasbon yang ia input muncul di Kasbon tim milik Owner dengan keterangan siapa yang mencatat |
+| **Teknisi** | Ringkasan, Pekerjaan (nota dan penghasilannya sendiri), Absen, Kasbon (miliknya), SOP, Tertib | Hanya nota dan penghasilan miliknya sendiri; tanpa data kontak pelanggan, foto, atau gaji orang lain |
 - **Sistem pendapatan teknisi** (Owner, Atur › Toko & tarif, per teknisi, termasuk Teknisi 2): **Bagi hasil saja**, **Gaji pokok + bagi hasil**, atau **Gaji pokok saja**. Pindah mode tidak menghapus persentase lama (dipulihkan bila kembali ke bagi hasil). Perubahan berlaku untuk nota baru; nota lama memakai % saat dibuat. Gaji pokok masuk perhitungan Gaji, Laporan, dan dashboard teknisi yang bersangkutan.
+
+## J. Katalog harga jasa (Level 1, 2, 3)
+- **Owner** mengatur di **Atur › Katalog harga**: nama kerusakan/layanan, kategori, dan harga untuk **Level 1 (ringan)**, **Level 2 (sedang)**, **Level 3 (berat)**. Arti tiap level bisa diubah. Isian tersimpan otomatis dan ikut tersinkron.
+- Harga bawaan (14 contoh untuk Software, HP, dan Laptop) hanya **perkiraan**. Sesuaikan dengan tarif toko Anda. Tombol **Kembalikan ke contoh bawaan** ada di bawah daftar.
+- **Kasir (Owner dan Admin depan)** memakainya lewat tombol **📋 Katalog harga**: di layar Input (mode Langsung) dan di nota (edit). Di kotak **Hasil cek teknisi** tombolnya bernama **📋 Dari katalog**; di sana ada pilihan **Tambahkan semua level sebagai tahap** yang membuat Tahap 1 sampai 3 berurutan dari yang paling ringan.
+- Ketuk harga pada level untuk memasukkannya ke nota (nama otomatis diberi akhiran Lv1/Lv2/Lv3). Harga masih bisa diubah di nota.
+- Tombol **Bagikan daftar harga (WhatsApp)** mengirim seluruh daftar harga sebagai pesan.
+- Harga di katalog adalah **harga jasa**. Sparepart dicatat terpisah.
+- Admin depan hanya menerima katalog bila Code.gs di Google Sheet sudah versi v10.30 atau lebih baru (tempel Code.gs terbaru, lalu Deploy versi baru).
+
+## K. Lisensi toko dengan jatah perangkat (v10.31)
+- Saat menerbitkan kode (ADOB: Atur › Lisensi), isi **Jatah perangkat**. **1** = lisensi per perangkat seperti biasa (terikat HWID). **2 atau lebih** = **lisensi toko**: kode yang sama dipakai di perangkat Owner dan staf.
+- Staf menempel kode toko di layar aktivasi, lalu masuk dengan akunnya. Perangkat staf tetap harus disetujui Owner di **Atur › Perangkat**.
+- Jatah dihitung dari semua perangkat berstatus Disetujui (termasuk perangkat Owner). Bila penuh, persetujuan ditolak sampai ada perangkat yang dihapus/diblokir atau lisensi diperbesar.
+- Owner mengirim jatah ke server otomatis saat membuka Atur › Perangkat setelah login. Server di Google Sheet/Cara 3 yang menegakkan batas ini; untuk Code.gs perlu versi v10.31 (tempel Code.gs terbaru lalu Deploy versi baru).
+- Batas: lisensi tetap diperiksa di perangkat dan bisa diakali oleh yang paham teknis. Kode toko sebaiknya hanya dibagikan ke staf.

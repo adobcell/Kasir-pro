@@ -292,6 +292,17 @@ body:has(nav.tabs) .wm{margin-top:-92px;padding-bottom:96px}
 }
 @media (min-width:1600px){:root{--sbw:260px}.wrap{max-width:1400px}}
 .t8 .tabs-in{overflow-x:auto;scrollbar-width:none}.t8 .tab{flex:1 0 auto;min-width:62px}
+.katbox{position:relative;display:grid;gap:10px;align-content:start;width:min(100%,640px);max-height:92vh;overflow:auto;background:var(--surface);color:var(--fg);border:var(--bw) solid var(--line);border-radius:var(--r);padding:16px}
+.katleg{display:grid;gap:2px;font-size:.8rem;color:var(--muted)}
+.katleg b{color:var(--fg)}
+.katrow{display:grid;gap:8px;padding:10px 0;border-top:var(--bw) solid var(--line)}
+.katlvs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.katlv{display:grid;gap:2px;justify-items:center;padding:.5rem .3rem;border:var(--bw) solid var(--accent);background:var(--surface2);color:var(--fg);border-radius:var(--rs);cursor:pointer;font:inherit;line-height:1.2}
+.katlv span{font-size:.72rem;color:var(--muted);font-weight:700}
+.katlv b{font-size:.86rem;font-variant-numeric:tabular-nums}
+.katlv:active{background:var(--accent);color:#fff}
+.katlv:disabled{opacity:.45;border-color:var(--line);cursor:default}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,130px),1fr));gap:10px}
 </style>
 </head>
 <body>
@@ -454,7 +465,7 @@ function rebuild(){
   else{s.base=+s.base||0;if(s.pay!=='gaji'&&s.pay!=='campur')s.pay='bagi';if(s.pay==='gaji'){s.share=0;s.fee=0;}else{if(s.share==null||isNaN(+s.share))s.share=s.role==='expert'?40:30;if(s.fee==null||isNaN(+s.fee))s.fee=2;}}
  });}
 /* Hanya Admin yang boleh mengubah data. Akun Teknisi hanya melihat (server juga menolak tulis dari teknisi). */
-function put(coll,o){if(!isAdmin()&&!(isFront()&&coll==='tx'))return;o.updated=Date.now();var k=coll+'/'+o.id;DOCS[k]=o;persist(k);mark(k);rebuild();pubPool();rkSchedule();}
+function put(coll,o){if(!isAdmin()&&!(isFront()&&(coll==='tx'||(coll==='kas'&&o.kind==='kasbon'&&!DOCS['kas/'+o.id]))))return;o.updated=Date.now();var k=coll+'/'+o.id;DOCS[k]=o;persist(k);mark(k);rebuild();pubPool();rkSchedule();}
 function drop(coll,id){if(!isAdmin()&&!(isFront()&&coll==='tx'))return;var k=coll+'/'+id,o=DOCS[k];if(!o)return;o.deleted=true;o.updated=Date.now();persist(k);mark(k);rebuild();pubPool();rkSchedule();}
 var ppBusy=false;
 /* Nota yang dibuat Admin depan belum membawa persentase bagi hasil (Admin tidak boleh melihat tarif). Perangkat Owner mengisinya otomatis. */
@@ -517,7 +528,7 @@ function findTx(id){return txs.find(function(x){return x.id===id;});}
 function syncKey(){return'kp-sync'+ns();}
 function loadSync(){try{var o=JSON.parse(localStorage.getItem(syncKey())||'{}');delete o.token;SYNC=Object.assign(SYNC,o);}catch(e){}SYNC.state='idle';if(!SYNC.url&&DEFAULT_URL)SYNC.url=DEFAULT_URL;}
 function saveSync(){try{localStorage.setItem(syncKey(),JSON.stringify({url:SYNC.url,since:SYNC.since,pending:SYNC.pending,last:SYNC.last,linked:SYNC.linked}));}catch(e){}}
-function mark(k){if(!canWrite())return;if(isFront()&&k.indexOf('tx/')!==0)return;SYNC.pending[k]=1;saveSync();scheduleSync(3000);}
+function mark(k){if(!canWrite())return;if(isFront()&&k.indexOf('tx/')!==0&&k.indexOf('kas/')!==0)return;SYNC.pending[k]=1;saveSync();scheduleSync(3000);}
 function scheduleSync(ms){if(!hasServer())return;clearTimeout(syncTimer);syncTimer=setTimeout(function(){syncNow(false);},ms);}
 function cell(v){var s=v==null?'':String(v);if(/^[=+\-@]/.test(s)||/^0\d/.test(s)||/^\d{9,}$/.test(s)||/^\d{1,2}:\d{2}$/.test(s))return"'"+s;return s;}
 function rowFor(k,o){
@@ -819,9 +830,9 @@ function waOwner(t,cl){
 
 function refundBanner(){var L=refundDue();if(!L.length)return'';
  return'<section class="card stack" style="border-color:var(--bad)"><strong>⚠ '+L.length+' refund garansi menunggu dikembalikan ke pelanggan</strong>'+L.map(function(x){return'<span class="small">'+esc(x.t.no)+' · '+esc(x.t.customer||'-')+' · '+esc(x.t.device)+' · '+rp(calc(x.t).total)+'</span>';}).join('')+'<span class="small muted">Buka nota di tab Nota, lalu tekan "Tandai uang sudah dikembalikan" setelah uang diserahkan.</span></section>';}
-var ADMIN_TABS=['kasir','riwayat','stok','absen','gaji','biaya','laporan','atur'],TECH_TABS=['t-ringkas','t-kerja','t-absen','t-kasbon','t-sop','t-tertib'],FRONT_TABS=['kasir','riwayat','stok','absen','f-sop','atur'];
+var ADMIN_TABS=['kasir','riwayat','stok','absen','gaji','biaya','laporan','atur'],TECH_TABS=['t-ringkas','t-kerja','t-absen','t-kasbon','t-sop','t-tertib'],FRONT_TABS=['kasir','riwayat','stok','absen','f-kasbon','f-sop','atur'];
 function view(){
- var f={kasir:vKasir,riwayat:vNota,gaji:vGaji,biaya:vBiaya,laporan:vLaporan,atur:vAtur,'t-ringkas':vTekHome,'t-kerja':vTekKerja,'t-kasbon':vTekKasbon,'t-sop':vTekSop,'t-tertib':vTertib,'f-sop':vFrontSop,stok:vStokTab,absen:(isAdmin()?vAbsenOwner:vAbsen),'t-absen':vAbsen}[tab];
+ var f={kasir:vKasir,riwayat:vNota,gaji:vGaji,biaya:vBiaya,laporan:vLaporan,atur:vAtur,'t-ringkas':vTekHome,'t-kerja':vTekKerja,'t-kasbon':vTekKasbon,'t-sop':vTekSop,'t-tertib':vTertib,'f-sop':vFrontSop,'f-kasbon':vFrontKasbon,stok:vStokTab,absen:(isAdmin()?vAbsenOwner:vAbsen),'t-absen':vAbsen}[tab];
  /* Pengaman: teknisi tidak pernah bisa membuka halaman admin, walau variabel tab diubah dari luar. */
  if(isTech()&&TECH_TABS.indexOf(tab)<0){tab='t-ringkas';f=vTekHome;}
  if(isAdmin()&&ADMIN_TABS.indexOf(tab)<0){tab='kasir';f=vKasir;}
@@ -832,12 +843,12 @@ function whoBar(){
  if(AUTH.local)return'<span class="small muted">Mode lokal</span>';
  return'<span class="row" style="gap:6px;flex-wrap:nowrap"><span class="small muted" style="text-align:right;line-height:1.2">'+esc(AUTH.name||AUTH.user)+(String(AUTH.name||'').toLowerCase()===roleName().toLowerCase()?'':'<br>'+roleName())+'</span><button class="btn sm'+(logoutArmed?' armed':'')+'" data-act="logout">'+(logoutArmed?'Yakin keluar?':'Keluar')+'</button></span>';}
 function shell(){
- var tabs=isTech()?[['t-ringkas','Ringkasan'],['t-kerja','Pekerjaan'],['t-absen','Absen'],['t-kasbon','Kasbon'],['t-sop','SOP'],['t-tertib','Tertib']]:isFront()?[['kasir','Input Data'],['riwayat','Nota'],['stok','Stok'],['absen','Absen'],['f-sop','SOP'],['atur','Printer']]:[['kasir','Input'],['riwayat','Nota'],['stok','Stok'],['absen','Absen'],['gaji','Gaji'],['biaya','Biaya'],['laporan','Laporan'],['atur','Atur']];
+ var tabs=isTech()?[['t-ringkas','Ringkasan'],['t-kerja','Pekerjaan'],['t-absen','Absen'],['t-kasbon','Kasbon'],['t-sop','SOP'],['t-tertib','Tertib']]:isFront()?[['kasir','Input Data'],['riwayat','Nota'],['stok','Stok'],['absen','Absen'],['f-kasbon','Kasbon'],['f-sop','SOP'],['atur','Printer']]:[['kasir','Input'],['riwayat','Nota'],['stok','Stok'],['absen','Absen'],['gaji','Gaji'],['biaya','Biaya'],['laporan','Laporan'],['atur','Atur']];
  var showMon=['gaji','biaya','laporan','t-ringkas','t-kerja','t-kasbon'].indexOf(tab)>=0||(tab==='riwayat'&&(flt==='bulan'||flt==='batal')),sl=syncLabel();
  return'<div class="wrap"><header class="top"><div><h1>'+esc(cfg.shop)+'</h1><button class="sub '+sl.c+'" data-act="'+((isTech()||isFront())?'sy-now':'go-sheets')+'"><span class="dot"></span>'+esc(sl.t)+'</button></div>'+whoBar()+
   (showMon?'<div class="mon" style="flex-basis:100%;justify-content:center"><button data-act="mon" data-v="-1" aria-label="Bulan sebelumnya">‹</button><strong>'+mlabel(month)+'</strong><button data-act="mon" data-v="1" aria-label="Bulan berikutnya">›</button></div>':'')+
   '</header><main>'+view()+'</main></div><nav class="tabs'+(tabs.length>=8?' t7 t8':(tabs.length>=7?' t7':''))+'"><div class="wrap tabs-in">'+
-  tabs.map(function(t){return'<button class="tab" data-act="tab" data-v="'+t[0]+'"'+(tab===t[0]?' aria-current="page"':'')+'>'+tabIco(t[0])+'<span>'+t[1]+'</span></button>';}).join('')+'</div></nav>'+picOverlay();}
+  tabs.map(function(t){return'<button class="tab" data-act="tab" data-v="'+t[0]+'"'+(tab===t[0]?' aria-current="page"':'')+'>'+tabIco(t[0])+'<span>'+t[1]+'</span></button>';}).join('')+'</div></nav>'+picOverlay()+katOverlay();}
 function loginHTML(){
  var hasUrl=!loginD.editUrl&&!!SYNC.url;
  return'<div class="wrap" style="min-height:100vh;display:grid;align-content:center;gap:16px;padding:24px 0"><div style="text-align:center">'+logoTag()+'<h1>'+esc(cfg.shop||DEF_SHOP)+'</h1><span class="muted small">Kasir Servis Pro · silakan masuk</span></div>'+
@@ -920,7 +931,7 @@ function vKasir(){
   '<label class="f">Jumlah<input id="it-'+i+'-qty" type="number" inputmode="numeric" min="1" data-i="'+i+'" data-k="qty" value="'+esc(it.qty)+'"></label>'+
   '<label class="f">'+(p?'Biaya ke pelanggan':'Harga jual')+moneyBox('id="it-'+i+'-price" data-i="'+i+'" data-k="price"',it.price)+'</label>'+
   (p?partCostCell(it,i):'')+(p?stkPicker(it,i):'')+'</div></div>';}).join('')+
- (draft.mode==='cek'?'':'<div class="row"><button class="btn" data-act="add-part">+ Tambah baris</button></div>')+
+ (draft.mode==='cek'?'':'<div class="row"><button class="btn" data-act="add-part">+ Tambah baris</button><button class="btn" data-act="kat-open" data-t="draft">📋 Katalog harga</button></div>')+
  draftPhotos()+'<div class="sect">Tanda tangan pelanggan</div><div class="sigbox"><div class="small muted">Pelanggan menggores tanda tangan di kotak ini (bukti persetujuan biaya, risiko data, dan SOP).</div>'+
  '<canvas id="sig-canvas" class="sigcanvas"></canvas><div><button class="linkbtn" data-act="sig-clear">Hapus tanda tangan</button></div></div></section>'+
  '<section class="card" id="sum">'+sumHTML()+'</section>'+
@@ -949,7 +960,7 @@ function editPanel0(t){
   '<label class="f">Jumlah<input id="ed-'+i+'-q" type="number" inputmode="numeric" min="1" data-ed="1" data-i="'+i+'" data-k="qty" value="'+esc(it.qty)+'"></label>'+
   '<label class="f">'+(p?'Biaya ke pelanggan':'Harga jual')+moneyBox('id="ed-'+i+'-p" data-ed="1" data-i="'+i+'" data-k="price"',it.price)+'</label>'+
   (p?'<label class="f">Modal'+moneyBox('id="ed-'+i+'-c" data-ed="1" data-i="'+i+'" data-k="cost"',it.cost)+'</label>':'')+'</div></div>';});
- h+='<div class="row"><button class="btn sm" data-act="edit-add-jasa">+ Jasa</button><button class="btn sm" data-act="edit-add-part">+ Sparepart</button></div>'+
+ h+='<div class="row"><button class="btn sm" data-act="edit-add-jasa">+ Jasa</button><button class="btn sm" data-act="edit-add-part">+ Sparepart</button><button class="btn sm" data-act="kat-open" data-t="edit">📋 Katalog</button></div>'+
  '<div class="ledger"><div class="ln"><span>Total biaya</span><span class="num" id="edit-total">'+rp(tot)+'</span></div><div class="ln"><span>Modal sparepart</span><span class="num" id="edit-cost">'+rp(cost)+'</span></div><div class="ln tot"><span>Laba bersih (sementara)</span><span class="num" id="edit-net">'+rp(Math.max(0,tot-cost))+'</span></div></div>'+
  (false?'<div class="box"><strong>🔒 Nota sudah selesai</strong><span class="small muted">Perubahan biaya/item wajib persetujuan Owner. Minta Owner memasukkan PIN-nya.</span><label class="f">PIN Owner<input id="ed-pin" type="password" inputmode="numeric" data-ep="1" autocomplete="off"></label></div>':'')+
  '<div class="row"><button class="btn pri sm" data-act="save-edit" data-v="'+t.id+'">💾 Simpan perubahan</button><button class="btn sm" data-act="abort-edit">Batal</button></div></div>';
@@ -1201,6 +1212,17 @@ function tertibHTML(){var t=TT();
  '<div class="box" style="margin-top:12px"><strong>💪 Semangat, tim '+esc(cfg.shop)+'!</strong><span>“Setiap HP yang hidup kembali adalah satu hari pelanggan yang terselamatkan. Itu hasil tangan kalian.”</span><span class="small">Rapi hari ini berarti dipercaya besok. Salah itu manusiawi, menyembunyikan salah yang merugikan. Tim yang kompak lebih kuat dari teknisi paling jago sendirian. Penghasilan kita tumbuh saat toko tumbuh, dan toko tumbuh saat pelanggan puas. Terima kasih sudah bekerja jujur, rapi, dan sepenuh hati. 🚀</span></div></div>';}
 function vTertib(){return'<section class="card">'+tertibHTML()+'</section>';}
 function sopFront(){return'<div style="line-height:1.65"><h3>Tugas Admin depan</h3><ul><li>Terima unit di tab Input Data: data pelanggan, perangkat, kelengkapan, kondisi fisik, foto, dan tanda tangan. Pilih <b>Cek dulu</b> bila kerusakan belum pasti (serahkan ke teknisi pemeriksa), atau <b>Harga sudah pasti</b> bila jelas.</li><li>Setelah teknisi mengecek, isi <b>Hasil cek teknisi</b> di nota, kirim ke pelanggan lewat WhatsApp, lalu catat tahap yang disetujui (atau hasil nego) sebagai biaya nota. Status menjadi Dikerjakan.</li><li>Unit selesai: hubungi pelanggan. Terima pembayaran, cetak nota, lalu ubah status menjadi <b>Diambil</b>.</li><li>Garansi: catat klaim dengan sopan dan jelas. Persetujuan klaim, refund, dan perubahan biaya nota yang sudah selesai ada di tangan Owner.</li></ul><h3>Batas akses</h3><ul><li>Admin tidak melihat gaji, kasbon, biaya toko, laporan keuangan, laba, atau tarif bagi hasil, tidak mengelola pengguna/perangkat, dan tidak mengubah pengaturan toko. Absen, stok (lihat saja), dan printer tetap boleh dipakai.</li><li>Membatalkan atau mengubah nota yang sudah selesai/diambil wajib PIN Owner. Hapus permanen hanya Owner.</li></ul></div>';}
+function vFrontKasbon(){
+ if(!kasD.staff||!staff(kasD.staff)){var s0=cfg.staff[0];kasD.staff=s0?s0.id:'';}
+ kasD.kind='kasbon';var td=iso(new Date()),am=+kasD.amount||0;
+ var mine=kass.filter(function(k){return k.by===AUTH.user&&k.date===td&&k.kind==='kasbon';}).sort(function(a,b){return(b.updated||0)-(a.updated||0);});
+ var h='<section class="card stack"><h2>Input kasbon</h2><span class="muted small">Catat kasbon baru karyawan (tanggal hari ini). Saldo, total, dan riwayat kasbon hanya terlihat oleh Owner. Salah catat? Beri tahu Owner untuk menghapusnya.</span>'+
+ '<div class="grid"><label class="f">Karyawan<select id="ks-staff" data-ks="staff">'+cfg.staff.map(function(s){return'<option value="'+esc(s.id)+'"'+(kasD.staff===s.id?' selected':'')+'>'+esc(s.name)+'</option>';}).join('')+'</select></label>'+
+ '<label class="f">Jumlah'+moneyBox('id="ks-amount" data-ks="amount"',kasD.amount)+'</label>'+
+ '<label class="f">Catatan<input id="ks-note" data-ks="note" value="'+esc(kasD.note)+'" placeholder="cth. kebutuhan keluarga" autocomplete="off"></label></div>'+
+ '<div><button class="btn pri'+(kasD.armed==='fk'?' armed':'')+'" data-act="fk-save">'+(kasD.armed==='fk'?'Ya, catat '+rp(am)+'':'💾 Catat kasbon')+'</button></div></section>';
+ if(mine.length)h+='<section class="card"><h2>Dicatat oleh Anda hari ini</h2>'+mine.map(function(k){var sf=staff(k.staffId);return'<div class="row sb"><span><strong>'+esc(sf?sf.name:'-')+'</strong>'+(k.note?'<br><span class="muted small">'+esc(k.note)+'</span>':'')+'</span><span class="num neg">'+rp(k.amount)+'</span></div>';}).join('')+'</section>';
+ return h;}
 function vFrontSop(){return'<section class="card">'+sopFront()+'</section><section class="card">'+tertibHTML()+'</section>';}
 function sopTeknisi(){
  var me=isTech()?staff(AUTH.staffId):null,s=me||{share:0,fee:0},lv=s.role==='expert'?'Expert (Lv.3)':'Interface (Lv.2)';
@@ -1311,7 +1333,7 @@ function kasHTML(){
  cfg.staff.forEach(function(s){var bal=kasBal(s.id),L=kass.filter(function(k){return k.staffId===s.id;}).sort(function(a,b){return String(b.date).localeCompare(String(a.date))||(b.updated-a.updated);});
   if(!L.length)return;any=true;
   h+='<div class="box"><div class="row sb"><strong>'+esc(s.name)+'</strong><span class="badge '+(bal>0?'warn':'good')+'">Sisa kasbon '+rp(bal)+'</span></div>'+
-  L.slice(0,8).map(function(k){var pot=k.kind==='potong';return'<div class="row sb" style="flex-wrap:nowrap;align-items:flex-start"><span style="min-width:0"><span class="small">'+fdate(k.date)+' · '+(pot?'Potong gaji':'Kasbon')+'</span>'+(k.note?'<br><span class="muted small">'+esc(k.note)+'</span>':'')+'</span><span class="num '+(pot?'pos':'neg')+'">'+(pot?'− ':'+ ')+rp(k.amount)+'</span><button class="btn sm danger'+(kasD.armed===k.id?' armed':'')+'" data-act="'+(kasD.armed===k.id?'del-kas':'ask-del-kas')+'" data-v="'+k.id+'">'+(kasD.armed===k.id?'Ya, hapus':'Hapus')+'</button></div>';}).join('')+
+  L.slice(0,8).map(function(k){var pot=k.kind==='potong';return'<div class="row sb" style="flex-wrap:nowrap;align-items:flex-start"><span style="min-width:0"><span class="small">'+fdate(k.date)+' · '+(pot?'Potong gaji':'Kasbon')+(k.by&&k.by!==AUTH.user?' · dicatat '+esc(k.by):'')+'</span>'+(k.note?'<br><span class="muted small">'+esc(k.note)+'</span>':'')+'</span><span class="num '+(pot?'pos':'neg')+'">'+(pot?'− ':'+ ')+rp(k.amount)+'</span><button class="btn sm danger'+(kasD.armed===k.id?' armed':'')+'" data-act="'+(kasD.armed===k.id?'del-kas':'ask-del-kas')+'" data-v="'+k.id+'">'+(kasD.armed===k.id?'Ya, hapus':'Hapus')+'</button></div>';}).join('')+
   (L.length>8?'<span class="muted small">+ '+(L.length-8)+' catatan lama (semua ada di Sheet "Kasbon")</span>':'')+'</div>';});
  if(any)h+='<span class="muted small">Menghapus catatan kasbon juga meminta PIN Owner (isi kolom PIN di atas lebih dulu).</span>';
  return h+'</section>';}
@@ -1445,6 +1467,7 @@ function aturBody(){
   '<div class="row"><button class="btn sm" data-act="sy-pull"'+(hasServer()?'':' disabled')+'>Ambil ulang semua dari Sheet</button><button class="btn sm danger" data-act="sy-off">Putuskan</button></div></section>';}
  if(aturTab==='pengguna')h+=penggunaBody();
  if(aturTab==='perangkat')h+=devAdminHTML();
+ if(aturTab==='katalog')h+=katAdmin();
  if(aturTab==='data'){
   h+='<section class="card stack"><h2>Cadangan &amp; ekspor</h2><div class="row"><button class="btn" data-act="exp-tx">Unduh nota bulan ini (CSV)</button><button class="btn" data-act="exp-exp">Unduh pengeluaran (CSV)</button></div>'+
   '<div class="row"><button class="btn" data-act="backup">Unduh cadangan (.json)</button><label class="btn" for="restore-file" style="cursor:pointer">Pulihkan dari cadangan</label><input id="restore-file" type="file" accept=".json,application/json" hidden></div>'+
@@ -1457,7 +1480,7 @@ function aturBody(){
  if(aturTab==='sop')h+='<section class="card stack"><h2>SOP &amp; tata tertib '+esc(cfg.shop)+'</h2><span class="badge '+(PREFS.sopSetujui?'good':'warn')+'">'+(PREFS.sopSetujui?'SOP sudah disetujui di perangkat ini':'Belum menyetujui SOP')+'</span>'+sopContent()+'</section>';
  return h;}
 function vAtur(){
- var tabs=isFront()?[['printer','Printer'],['tampilan','Tampilan']]:[['toko','Toko & tarif'],['pengguna','Pengguna'],['perangkat','Perangkat'],['tampilan','Tampilan'],['printer','Printer'],['sheets','Google Sheets'],['data','Data'],['aktivitas','Aktivitas'],['sop','SOP'],['tertib','Tata tertib']].concat(isAdmin()?[['lisensi','Lisensi']]:[]);
+ var tabs=isFront()?[['printer','Printer'],['tampilan','Tampilan']]:[['toko','Toko & tarif'],['katalog','Katalog harga'],['pengguna','Pengguna'],['perangkat','Perangkat'],['tampilan','Tampilan'],['printer','Printer'],['sheets','Google Sheets'],['data','Data'],['aktivitas','Aktivitas'],['sop','SOP'],['tertib','Tata tertib']].concat(isAdmin()?[['lisensi','Lisensi']]:[]);
  return'<section class="card"><div class="chips">'+tabs.map(function(t){return'<button class="chip" data-act="atur" data-v="'+t[0]+'" aria-pressed="'+(aturTab===t[0])+'">'+esc(t[1])+'</button>';}).join('')+'</div><p class="muted small" style="margin:8px 0 0">'+(isFront()?'Pengaturan printer dan tampilan untuk perangkat ini.':'Semua isian di menu Atur tersimpan otomatis begitu diubah.')+'</p></section>'+aturBody();}
 
 /* ===== Login, keluar, dan kelola pengguna ===== */
@@ -1527,7 +1550,7 @@ function penggunaBody(){
  if(!hasServer())return'<section class="card stack"><h2>Pengguna</h2><p class="small" style="margin:0">Login multi-peran aktif setelah aplikasi terhubung ke Google Sheets dan Anda masuk dengan akun admin. Buka tab <b>Google Sheets</b> untuk menghubungkan.</p></section>';
  if(!USR.form)USR.form=usrNewForm();
  var f=USR.form,T=techs(),h='<section class="card stack"><div class="row sb"><h2>Akun &amp; hak akses</h2><button class="btn sm" data-act="usr-reload"'+(USR.busy?' disabled':'')+'>Muat ulang</button></div>'+
- '<div class="box small"><b>Owner</b>: akses penuh (pengaturan toko, gaji, kasbon, biaya, laporan, pengguna). Username <b>admin</b> selalu Owner dan tidak bisa dijadikan Admin depan; untuk Admin depan buat username lain (cth. kasir).<br><b>Admin depan</b>: hanya tugas depan: input unit baru, buat dan cetak nota, kirim WhatsApp ke pelanggan, ubah status, serahkan unit ke Teknisi 1/2. Tidak melihat gaji, kasbon, biaya, laporan, atau tarif bagi hasil.<br><b>Teknisi 1 / Teknisi 2</b>: hanya <u>melihat</u> pekerjaan, hasil, bonus, dan kasbon <u>miliknya sendiri</u>. Tidak bisa mengubah apa pun. Data orang lain tidak pernah dikirim ke perangkatnya.</div>'+
+ '<div class="box small"><b>Owner</b>: akses penuh (pengaturan toko, gaji, kasbon, biaya, laporan, pengguna). Username <b>admin</b> selalu Owner dan tidak bisa dijadikan Admin depan; untuk Admin depan buat username lain (cth. kasir).<br><b>Admin depan</b>: tugas depan: Input Data (termasuk 📋 Katalog harga), Nota (buat, edit, cetak, WhatsApp, ubah status, serahkan ke teknisi), <u>input kasbon baru</u>, Stok (lihat saja), Absen, SOP, Printer dan Tampilan. Tidak melihat gaji, saldo/riwayat kasbon, biaya toko, laporan, atau tarif bagi hasil.<br><b>Teknisi 1 / Teknisi 2</b>: hanya <u>melihat</u> nota dan penghasilan <u>miliknya sendiri</u>, plus Absen, Kasbon (miliknya), SOP, dan Tata tertib. Tidak bisa mengubah apa pun. Data orang lain tidak pernah dikirim ke perangkatnya.</div>'+
  (USR.err?'<div class="badge bad" role="alert" style="white-space:normal">'+esc(USR.err)+'</div>':'');
  if(!USR.list)h+='<span class="muted small">'+(USR.busy?'Memuat daftar akun…':'Daftar belum dimuat.')+'</span>';
  else h+=USR.list.map(function(u){var s=staff(u.staffId),arm=USR.armedDel===u.username;
@@ -1537,7 +1560,7 @@ function penggunaBody(){
  h+='</section><section class="card stack"><h2>'+(f.edit?'Ubah akun @'+esc(f.username):'Tambah akun')+'</h2><div class="grid">'+
  '<label class="f">Username<input id="u-username" data-u="username" value="'+esc(f.username)+'"'+(f.edit?' readonly':'')+' autocomplete="off" autocapitalize="none" placeholder="cth. teknisi1"></label>'+
  '<label class="f">Nama tampil<input id="u-name" data-u="name" value="'+esc(f.name)+'" autocomplete="off" placeholder="cth. Budi"></label>'+
- '<label class="f">Peran<select id="u-role" data-u="role"><option value="teknisi"'+(f.role==='teknisi'?' selected':'')+'>Teknisi (hanya lihat)</option><option value="front"'+(f.role==='front'?' selected':'')+'>Admin depan (input &amp; nota)</option><option value="admin"'+(f.role==='admin'?' selected':'')+'>Owner (akses penuh)</option></select></label>'+
+ '<label class="f">Peran<select id="u-role" data-u="role"><option value="teknisi"'+(f.role==='teknisi'?' selected':'')+'>Teknisi (hanya lihat)</option><option value="front"'+(f.role==='front'?' selected':'')+'>Admin depan (input, nota &amp; input kasbon)</option><option value="admin"'+(f.role==='admin'?' selected':'')+'>Owner (akses penuh)</option></select></label>'+
  (f.role==='teknisi'?'<label class="f">Karyawan<select id="u-staff" data-u="staffId">'+T.map(function(s){return'<option value="'+esc(s.id)+'"'+(f.staffId===s.id?' selected':'')+'>'+esc(s.name)+' · '+esc(ROLE[s.role])+'</option>';}).join('')+'</select></label>':'')+
  '<label class="f">'+(f.edit?'Sandi baru (kosongkan bila tidak diganti)':'Sandi (min. 6 karakter)')+'<input id="u-password" data-u="password" type="password" value="'+esc(f.password)+'" autocomplete="new-password"></label>'+
  '<label class="f">Status<select id="u-active" data-u="active"><option value="1"'+(f.active!==false?' selected':'')+'>Aktif</option><option value="0"'+(f.active===false?' selected':'')+'>Nonaktif (tidak bisa masuk)</option></select></label></div>'+
@@ -1709,6 +1732,11 @@ function act(a,el){
  else if(a==='del-exp'){var de0=DOCS['exp/'+v];if(de0&&locked(de0.date))return;logAct('Hapus pengeluaran',(de0?de0.cat+' · '+rp(de0.amount):v));armed=null;drop('exp',v);render();toast('Pengeluaran dihapus');}
  else if(a==='toggle-rajin'){cfg.rajinCheck=cfg.rajinCheck||{};k=month+'|'+v;cfg.rajinCheck[k]=!cfg.rajinCheck[k];saveCfg();logAct('Bonus rajin',techName(v)+' · '+mlabel(month)+' · '+(cfg.rajinCheck[k]?'ya':'batal'));render();toast(cfg.rajinCheck[k]?'Bonus rajin diaktifkan.':'Bonus rajin dibatalkan.');}
  else if(a==='paid'){cfg.paid=cfg.paid||{};k=month+'|'+v;if(cfg.paid[k])delete cfg.paid[k];else cfg.paid[k]=iso(new Date());saveCfg();logAct('Gaji ditandai',techName(v)+' · '+mlabel(month)+' · '+(cfg.paid[k]?'dibayar':'batal dibayar'));render();}
+ else if(a==='fk-save'){if(!isFront())return;var fd=iso(new Date());if(locked(fd))return;var fam=+kasD.amount||0,fsf=staff(kasD.staff);
+  if(!fsf){toast('Pilih karyawan.');return;}if(fam<=0){toast('Isi jumlah.');return;}
+  if(kasD.armed!=='fk'){kasD.armed='fk';render();return;}
+  put('kas',{id:uid(),date:fd,staffId:fsf.id,kind:'kasbon',amount:fam,note:String(kasD.note).trim(),by:AUTH.user});logAct('Kasbon (admin depan)',fsf.name+' · '+rp(fam));
+  kasD.amount='';kasD.note='';kasD.armed=null;render();toast('Kasbon dicatat. Owner akan melihatnya.');}
  else if(a==='save-kas'){if(locked(kasD.date||iso(new Date())))return;var am=+kasD.amount||0,sf=staff(kasD.staff);
   if(!sf){toast('Pilih karyawan.');return;}if(am<=0){toast('Isi jumlah.');return;}
   if(!cfg.ownerPinH){toast('PIN Owner belum diatur. Atur di Atur › Toko & tarif.');return;}
@@ -2660,7 +2688,7 @@ function dgBox(t){
    '<label class="f">Modal'+moneyBox('data-dg="cost" data-v="'+id+'" data-i="'+i+'"',x.cost)+'</label>'+
    (stks.length?'<label class="f f-name">Pakai stok (opsional)<select data-dgsid="'+i+'" data-v="'+id+'"><option value="">— tanpa stok —</option>'+stkSorted().map(function(s){return'<option value="'+esc(s.id)+'"'+(x.sid===s.id?' selected':'')+'>'+esc(s.name)+' · sisa '+stkOn(s)+'</option>';}).join('')+'</select></label>':'')+
    '</div></div>';});
- h+='<div class="row"><button class="btn sm" data-act="dg-add" data-v="'+id+'">+ Tahap tindakan</button>'+
+ h+='<div class="row"><button class="btn sm" data-act="dg-add" data-v="'+id+'">+ Tahap tindakan</button><button class="btn sm" data-act="kat-open" data-t="dg" data-v="'+id+'">📋 Dari katalog</button>'+
   (named?'<a class="btn sm pri" href="'+waLink(t,msgText(t,'diag'))+'" target="_blank" rel="noopener">Kirim hasil cek (WhatsApp)</a>':'')+
   (stt==='Diterima'&&named?'<button class="btn sm" data-act="set-status" data-v="'+id+'" data-s="Menunggu konfirmasi">Tandai menunggu persetujuan</button>':'')+'</div>'+
   '<div class="row"><button class="btn pri sm" data-act="dg-apply" data-v="'+id+'">✔ Pakai tahap yang disetujui sebagai biaya nota</button></div>'+
@@ -2844,7 +2872,7 @@ function act6(a,el){
 }
 /* ===== v10: ikon tab + kelas status nota ===== */
 var TAB_ICO={kasir:'<rect x="4" y="3" width="16" height="18" rx="3"/><path d="M12 8v8M8 12h8"/>',riwayat:'<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r=".8"/><circle cx="4" cy="12" r=".8"/><circle cx="4" cy="18" r=".8"/>',stok:'<path d="M3 8l9-5 9 5v9l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v9"/>',gaji:'<rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1"/>',biaya:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',laporan:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',atur:'<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>',
- 't-ringkas':'<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>','t-kerja':'<path d="M14.5 6.5a4 4 0 0 0-5 5L3 18l3 3 6.5-6.5a4 4 0 0 0 5-5l-2.5 2.5-2-2z"/>','t-absen':'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',absen:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>','t-kasbon':'<rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18"/>','t-sop':'<path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M8 8h6M8 12h6"/>','f-sop':'<path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M8 8h6M8 12h6"/>','t-tertib':'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>'};
+ 'f-kasbon':'<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>','t-ringkas':'<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>','t-kerja':'<path d="M14.5 6.5a4 4 0 0 0-5 5L3 18l3 3 6.5-6.5a4 4 0 0 0 5-5l-2.5 2.5-2-2z"/>','t-absen':'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',absen:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>','t-kasbon':'<rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18"/>','t-sop':'<path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M8 8h6M8 12h6"/>','f-sop':'<path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M8 8h6M8 12h6"/>','t-tertib':'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>'};
 function tabIco(id){return'<svg viewBox="0 0 24 24" aria-hidden="true">'+(TAB_ICO[id]||'<circle cx="12" cy="12" r="3"/>')+'</svg>';}
 function stCls(t){return' st-'+String(statusOf(t)||'').toLowerCase().replace(/[^a-z]+/g,'-');}
 /* ===== v10: kunci perangkat ===== */
@@ -3395,7 +3423,7 @@ function absProofCard(){
 function absAdminCard(){return absAdminCard0()+absProofCard();}
 function vAbsenOwner(){return'<section class="card stack">'+geoBox()+'</section><section class="card"><span class="small muted">Rekap kehadiran seluruh tim. Owner bisa mengisi/mengoreksi hadir, izin, sakit, atau alpa tiap karyawan.</span></section>'+absAdminCard();}
 /* ===== v10.19: pembaruan otomatis dari GitHub ===== */
-var APP_VER='10.29';
+var APP_VER='10.31';
 function verOf(h){var m=/APP_VER='([^']+)'/.exec(h||'');return m?m[1]:'';}
 var updBusy=false,updLast=0;
 function applyUpdate(){
@@ -3490,9 +3518,127 @@ function devCkSet(v){try{document.cookie='kp_dev='+v+'; max-age=63072000; path=/
    }catch(e){}});}
  setTimeout(sync,250);
 })();
+/* ===== v10.30: Katalog harga jasa servis (kerusakan Level 1, 2, 3) =====
+   Data di cfg.katalog = [{id,cat,name,l1,l2,l3,note}] dan cfg.katLv = [{n,d},{n,d},{n,d}] (ikut tersinkron lewat cfg).
+   Owner mengatur di Atur > Katalog harga. Kasir (Owner/Admin depan) memilihnya dari layar Input / Edit nota. */
+var KAT={open:false,q:'',cat:'',t:'draft',id:'',armed:'',busy:false};
+function katDefLv(){return[{n:'Level 1 · Ringan',d:'Kerusakan ringan, pengerjaan singkat (bersihkan, setel ulang, ganti bagian sederhana).'},{n:'Level 2 · Sedang',d:'Kerusakan sedang, perlu bongkar dan ganti atau perbaiki komponen.'},{n:'Level 3 · Berat',d:'Kerusakan berat, perlu micro-soldering, jalur, atau IC.'}];}
+function katDef(){var r=function(i,c,n,a,b,d,o){return{id:'k'+i,cat:c,name:n,l1:a,l2:b,l3:d,note:o||''};};
+ return[
+ r(1,'Software','Install ulang / flash HP',50000,100000,175000,'Lv1 reset, Lv2 flash firmware, Lv3 bootloop berat'),
+ r(2,'Software','Update / perbaiki sistem Android atau iOS',40000,80000,150000,''),
+ r(3,'HP · Hardware','Ganti LCD / touchscreen (jasa)',50000,100000,150000,'Lv3 OLED lepas kaca atau bingkai rusak. Sparepart terpisah'),
+ r(4,'HP · Hardware','Ganti baterai (jasa)',35000,60000,100000,'Lv2 baterai tanam, Lv3 tanam dan perekat waterproof'),
+ r(5,'HP · Hardware','Konektor charger tidak mengisi',50000,80000,150000,'Lv1 bersihkan, Lv2 ganti flexi, Lv3 ganti port (solder)'),
+ r(6,'HP · Hardware','Ganti kamera / speaker / mic (jasa)',40000,60000,100000,''),
+ r(7,'HP · Hardware','HP mati total',35000,100000,250000,'Lv3 IC power atau micro-soldering'),
+ r(8,'HP · Hardware','HP terkena air',75000,150000,300000,'Lv1 cuci ultrasonic, Lv3 komponen korosi'),
+ r(9,'HP · Hardware','Sinyal / jaringan hilang',75000,150000,300000,''),
+ r(10,'Laptop','Install ulang Windows + driver',75000,125000,200000,'Lv3 data perlu diselamatkan'),
+ r(11,'Laptop','Servis overheat (bersihkan, thermal paste, kipas)',100000,150000,200000,''),
+ r(12,'Laptop','Ganti LCD / keyboard (jasa)',75000,100000,150000,''),
+ r(13,'Laptop','Laptop mati total',100000,200000,400000,'Lv3 mainboard atau IC'),
+ r(14,'Laptop','Upgrade RAM / SSD (jasa)',50000,75000,100000,'')];}
+function katLv(){var d=katDefLv(),o=Array.isArray(cfg.katLv)?cfg.katLv:[];return[0,1,2].map(function(i){return{n:String((o[i]&&o[i].n)||d[i].n),d:String((o[i]&&o[i].d!=null)?o[i].d:d[i].d)};});}
+function katHas(){return Array.isArray(cfg.katalog);}
+function katList(){return katHas()?cfg.katalog:[];}
+function katSeed(){if(isAdmin()&&!katHas()){cfg.katalog=katDef();saveCfg();}}
+function katNum(v){return Math.max(0,parseInt(String(v).replace(/\D/g,''),10)||0);}
+function katCats(){var s={},o=[];katList().forEach(function(k){var c=k.cat||'Lainnya';if(!s[c]){s[c]=1;o.push(c);}});return o;}
+function katShort(i){return'Lv'+i;}
+function katFiltered(){
+ var q=String(KAT.q||'').trim().toLowerCase();
+ return katList().filter(function(k){
+  if(!String(k.name||'').trim())return false;
+  if(KAT.cat&&(k.cat||'Lainnya')!==KAT.cat)return false;
+  if(!q)return true;return((k.name||'')+' '+(k.cat||'')+' '+(k.note||'')).toLowerCase().indexOf(q)>=0;});}
+function katOverlay(){
+ if(!KAT.open)return'';
+ var L=katLv(),F=katFiltered(),cats=katCats(),h='<div class="ovl"><div class="ovl-bg" data-act="kat-close"></div><div class="katbox" role="dialog" aria-label="Katalog harga jasa">'+
+  '<div class="row sb"><h2 style="margin:0">Katalog harga jasa</h2><button class="btn sm" data-act="kat-close">Tutup</button></div>'+
+  '<span class="small muted">Harga jasa, belum termasuk sparepart. Ketuk harga pada level kerusakan untuk menambahkannya ke nota.</span>'+
+  '<input id="kat-q" data-kq="1" type="search" placeholder="Cari kerusakan, mis. LCD, baterai, mati total" value="'+esc(KAT.q)+'" autocomplete="off">'+
+  (cats.length>1?'<div class="chips"><button class="chip" data-act="kat-cat" data-v="" aria-pressed="'+(!KAT.cat)+'">Semua</button>'+cats.map(function(c){return'<button class="chip" data-act="kat-cat" data-v="'+esc(c)+'" aria-pressed="'+(KAT.cat===c)+'">'+esc(c)+'</button>';}).join('')+'</div>':'')+
+  '<div class="katleg">'+L.map(function(x,i){return'<div><b>'+esc(x.n)+'</b>'+(x.d?' · '+esc(x.d):'')+'</div>';}).join('')+'</div>';
+ if(!katHas())h+='<div class="badge warn" style="white-space:normal">Katalog belum diatur Owner. Minta Owner mengisinya di Atur › Katalog harga (dan memperbarui Code.gs bila memakai Google Sheets).</div>';
+ else if(!F.length)h+='<span class="small muted">Tidak ada yang cocok.</span>';
+ F.forEach(function(k){
+  h+='<div class="katrow"><div><strong>'+esc(k.name)+'</strong>'+(k.note?'<div class="small muted">'+esc(k.note)+'</div>':'')+'</div><div class="katlvs">'+
+   [1,2,3].map(function(i){var p=+k['l'+i]||0;return p>0?'<button class="katlv" data-act="kat-add" data-id="'+esc(k.id)+'" data-lv="'+i+'"><span>'+katShort(i)+'</span><b>'+rp(p)+'</b></button>':'<button class="katlv" disabled><span>'+katShort(i)+'</span><b>—</b></button>';}).join('')+'</div>'+(KAT.t==='dg'?'<div><button class="linkbtn" data-act="kat-all" data-id="'+esc(k.id)+'">Tambahkan semua level sebagai tahap (ringan ke berat)</button></div>':'')+'</div>';});
+ return h+'<div class="row"><button class="btn sm" data-act="kat-wa">Bagikan daftar harga (WhatsApp)</button></div></div></div>';}
+function katDg(k,lvs){
+ var tx=findTx(KAT.id);if(!tx){toast('Nota tidak ditemukan.');return;}
+ var d=dgOf(tx),n=0;
+ lvs.forEach(function(lv){var p=+k['l'+lv]||0;if(p<=0)return;
+  var x={t:k.name+' · '+katShort(lv),est:p,cost:0,ok:false},last=d.tahap[d.tahap.length-1];
+  if(last&&!String(last.t||'').trim()&&!(+last.est))d.tahap[d.tahap.length-1]=x;else d.tahap.push(x);n++;});
+ if(!n)return;put('tx',tx);KAT.open=false;render();toast(n+' tahap ditambahkan dari katalog. Centang yang disetujui pelanggan.');}
+function katAdd(id,lv){
+ var k=katList().filter(function(x){return x.id===id;})[0];if(!k)return;
+ var p=+k['l'+lv]||0;if(p<=0)return;
+ if(KAT.t==='dg'){katDg(k,[lv]);return;}
+ var it={type:'jasa',name:k.name+' · '+katShort(lv),qty:1,price:p,cost:0},arr=KAT.t==='edit'?(editD&&editD.items):draft.items;
+ if(!arr){toast('Buka nota yang ingin diubah dulu.');return;}
+ var last=arr[arr.length-1];
+ if(last&&!String(last.name||'').trim()&&(last.price===''||last.price==null||+last.price===0))arr[arr.length-1]=it;else arr.push(it);
+ KAT.open=false;render();toast('Ditambahkan: '+it.name+' · '+rp(p));}
+function katText(){
+ var L=katLv(),by={},o=[];katList().forEach(function(k){if(!String(k.name||'').trim())return;var c=k.cat||'Lainnya';if(!by[c]){by[c]=[];o.push(c);}by[c].push(k);});
+ var t='*Daftar harga jasa servis'+(cfg.shop?' · '+cfg.shop:'')+'*\n';
+ o.forEach(function(c){t+='\n*'+c+'*\n';by[c].forEach(function(k){
+  var ps=[1,2,3].map(function(i){var p=+k['l'+i]||0;return p>0?katShort(i)+' '+rp(p):'';}).filter(Boolean);
+  t+='• '+k.name+' — '+ps.join(' | ')+'\n';});});
+ t+='\n'+L.map(function(x,i){return katShort(i+1)+' = '+x.n.replace(/^Level \d\s*·\s*/,'')+(x.d?' ('+x.d+')':'');}).join('\n');
+ t+='\n\nHarga jasa, belum termasuk sparepart. Harga final setelah pengecekan unit.';
+ if(cfg.phone)t+='\nInfo: '+cfg.phone;
+ return t;}
+function katAdmin(){
+ if(!isAdmin())return'';
+ katSeed();
+ var L=katLv(),h='<section class="card stack"><h2>Katalog harga jasa</h2>'+
+  '<p class="small muted" style="margin:0">Daftar harga jasa menurut tingkat kerusakan. Kasir memilihnya dari layar Input lewat tombol <b>Katalog harga</b>. Isian tersimpan otomatis. Harga bawaan hanya contoh perkiraan, sesuaikan dengan tarif toko Anda.</p>'+
+  '<div class="sect">Arti level</div>'+
+  L.map(function(x,i){return'<div class="grid"><label class="f">Level '+(i+1)+'<input data-kl="'+i+'" data-f="n" value="'+esc(x.n)+'" autocomplete="off"></label><label class="f">Keterangan<input data-kl="'+i+'" data-f="d" value="'+esc(x.d)+'" autocomplete="off"></label></div>';}).join('')+
+  '</section><section class="card stack"><div class="row sb"><h2>Daftar ('+katList().length+')</h2><button class="btn sm pri" data-act="kat-new">+ Tambah baris</button></div>'+
+  '<datalist id="kat-cats">'+katCats().map(function(c){return'<option value="'+esc(c)+'"></option>';}).join('')+'</datalist>';
+ katList().forEach(function(k){
+  h+='<div class="box"><label class="f">Nama kerusakan / layanan<input data-ke="'+esc(k.id)+'" data-f="name" value="'+esc(k.name)+'" autocomplete="off"></label>'+
+   '<div class="grid"><label class="f">Kategori<input list="kat-cats" data-ke="'+esc(k.id)+'" data-f="cat" value="'+esc(k.cat)+'" autocomplete="off"></label>'+
+   '<label class="f">Catatan (opsional)<input data-ke="'+esc(k.id)+'" data-f="note" value="'+esc(k.note)+'" autocomplete="off"></label></div>'+
+   '<div class="grid3">'+[1,2,3].map(function(i){return'<label class="f">Harga Lv'+i+'<div class="moneyin"><b>Rp</b><input type="text" inputmode="numeric" autocomplete="off" data-ke="'+esc(k.id)+'" data-f="l'+i+'" value="'+(+k['l'+i]?(+k['l'+i]).toLocaleString('id-ID'):'')+'" placeholder="kosong = tidak ada"></div></label>';}).join('')+'</div>'+
+   '<div class="row"><button class="btn sm danger'+(KAT.armed===k.id?' armed':'')+'" data-act="kat-del" data-id="'+esc(k.id)+'">'+(KAT.armed===k.id?'Ya, hapus':'Hapus baris')+'</button></div></div>';});
+ h+='<div class="row"><button class="btn sm'+(KAT.armed==='reset'?' armed':'')+'" data-act="kat-reset">'+(KAT.armed==='reset'?'Ya, kembalikan ke contoh bawaan':'Kembalikan ke contoh bawaan')+'</button></div></section>';
+ return h;}
+document.addEventListener('click',function(e){
+ var b=e.target.closest&&e.target.closest('[data-act^="kat-"]');if(!b)return;var a=b.dataset.act,v=b.dataset.v;
+ if(a==='kat-open'){if(isAdmin())katSeed();KAT.open=true;KAT.q='';KAT.cat='';KAT.t=b.dataset.t==='edit'?'edit':b.dataset.t==='dg'?'dg':'draft';KAT.id=b.dataset.v||'';render();return;}
+ if(a==='kat-close'){KAT.open=false;render();return;}
+ if(a==='kat-cat'){KAT.cat=v||'';render();return;}
+ if(a==='kat-add'){katAdd(b.dataset.id,+b.dataset.lv);return;}
+ if(a==='kat-all'){var kk=katList().filter(function(x){return x.id===b.dataset.id;})[0];if(kk)katDg(kk,[1,2,3]);return;}
+ if(a==='kat-wa'){var u='https://wa.me/?text='+encodeURIComponent(katText());window.open(u,'_blank','noopener');return;}
+ if(!isAdmin())return;
+ if(a==='kat-new'){var arr=katList();arr.push({id:'k'+uid(),cat:KAT.cat||(arr.length?arr[arr.length-1].cat:'')||'',name:'',l1:0,l2:0,l3:0,note:''});cfg.katalog=arr;saveCfg();render();return;}
+ if(a==='kat-del'){var id=b.dataset.id;if(KAT.armed!==id){KAT.armed=id;render();setTimeout(function(){if(KAT.armed===id){KAT.armed='';if(tab==='atur')render();}},4000);return;}
+  KAT.armed='';cfg.katalog=katList().filter(function(k){return k.id!==id;});saveCfg();render();toast('Baris dihapus.');return;}
+ if(a==='kat-reset'){if(KAT.armed!=='reset'){KAT.armed='reset';render();setTimeout(function(){if(KAT.armed==='reset'){KAT.armed='';if(tab==='atur')render();}},4000);return;}
+  KAT.armed='';cfg.katalog=katDef();cfg.katLv=katDefLv();saveCfg();render();toast('Katalog dikembalikan ke contoh bawaan.');return;}
+});
+document.addEventListener('input',function(e){
+ var t=e.target;if(!t||!t.dataset)return;
+ if(t.dataset.kq!==undefined){KAT.q=t.value;render();return;}
+ if(!isAdmin())return;
+ if(t.dataset.ke!==undefined){var k=katList().filter(function(x){return x.id===t.dataset.ke;})[0];if(!k)return;var f=t.dataset.f;
+  if(/^l[123]$/.test(f)){var n=katNum(t.value);k[f]=n;var s=n?n.toLocaleString('id-ID'):'';if(t.value!==s)t.value=s;}else k[f]=String(t.value).slice(0,120);return;}
+ if(t.dataset.kl!==undefined){var lv=katLv(),i=+t.dataset.kl;lv[i][t.dataset.f]=String(t.value).slice(0,160);cfg.katLv=lv;}
+});
+document.addEventListener('change',function(e){
+ var t=e.target;if(!t||!t.dataset||!isAdmin())return;
+ if(t.dataset.ke!==undefined||t.dataset.kl!==undefined)saveCfg();
+});
 
 /* ===== v10.28 (ADOB CELL): Atur > Lisensi (pembuat kode lisensi untuk member netral) ===== */
-var LA={mem:null,memBusy:false,memErr:'',has:null,busy:false,msg:'',err:false,hw:'',nm:'',wa:'',pk:'trial',dy:'',pin:'',key:'',last:null};
+var LA={j:1,mem:null,memBusy:false,memErr:'',has:null,busy:false,msg:'',err:false,hw:'',nm:'',wa:'',pk:'trial',dy:'',pin:'',key:'',last:null};
 var LA_DAYS={trial:30,bulan:30,tahun:365,seumur:0};
 var LA_PLAN={trial:'Trial 1 Bulan',bulan:'Pro 1 Bulan',tahun:'Pro 1 Tahun',seumur:'Seumur hidup',kustom:'Kustom'};
 function laFmt(ms){return ms?new Date(ms).toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}):'Seumur hidup';}
@@ -3525,7 +3671,7 @@ function laMemCard(){
 function laCard(){
  if(!isAdmin())return'<section class="card"><p class="muted">Hanya Owner yang dapat membuat kode lisensi.</p></section>';
  laInit();
- var h='<section class="card stack"><h2>Kode lisensi untuk member netral</h2><p class="small muted" style="margin:0">Buat kode aktivasi dari HWID yang dikirim member. Kunci privat tersimpan di perangkat ini dalam bentuk yang tidak bisa dibaca ulang, dan file kuncinya tetap Anda simpan sendiri sebagai cadangan.</p></section>';
+ var h='<section class="card stack"><h2>Kode lisensi untuk member netral</h2><p class="small muted" style="margin:0">Buat kode aktivasi dari HWID yang dikirim member. Isi <b>Jatah perangkat</b> 1 untuk lisensi per perangkat, atau 2 sampai 5 untuk lisensi toko (staf memakai kode yang sama, perangkat dibatasi jatah). Kunci privat tersimpan di perangkat ini dalam bentuk yang tidak bisa dibaca ulang, dan file kuncinya tetap Anda simpan sendiri sebagai cadangan.</p></section>';
  h+='<section class="card stack"><h3 style="margin:0">1. Kunci penanda tangan</h3>';
  if(LA.has)h+='<span class="badge good">Kunci aktif di perangkat ini</span><div class="row"><button class="btn sm" data-act="la-forget">Lupakan kunci di perangkat ini</button></div>';
  else h+='<span class="badge warn">'+(LA.has===null?'Memeriksa…':'Belum ada kunci')+'</span><label class="f">Pilih file KUNCI-PRIVAT-ADMIN.json<input id="la-kf" type="file" accept=".json,application/json"></label>';
@@ -3535,6 +3681,7 @@ function laCard(){
  '<label class="f">Nama pelanggan / bengkel<input id="la-nm" value="'+esc(LA.nm)+'" autocomplete="off"></label>'+
  '<label class="f">No. WhatsApp pelanggan (opsional)<input id="la-wa" value="'+esc(LA.wa)+'" inputmode="tel" placeholder="08xxxxxxxxxx" autocomplete="off"></label>'+
  '<label class="f">Paket<select id="la-pk">'+Object.keys(LA_PLAN).map(function(k){return'<option value="'+k+'"'+(LA.pk===k?' selected':'')+'>'+LA_PLAN[k]+(k==='trial'?' (gratis, 30 hari)':k==='bulan'?' (30 hari)':k==='tahun'?' (365 hari)':k==='kustom'?' (isi jumlah hari)':'')+'</option>';}).join('')+'</select></label>'+
+ '<label class="f">Jatah perangkat (1 = per perangkat; 2 atau lebih = lisensi toko, termasuk perangkat Owner)<input id="la-j" type="number" min="1" max="20" value="'+esc(LA.j)+'"></label>'+
  (LA.pk==='kustom'?'<label class="f">Jumlah hari<input id="la-dy" type="number" min="1" value="'+esc(LA.dy)+'"></label>':'')+
  (cfg.ownerPinH?'<label class="f">PIN Owner<input id="la-pin" type="password" inputmode="numeric" value="'+esc(LA.pin)+'" autocomplete="off"></label>':'')+
  '<div class="row"><button class="btn pri" data-act="la-gen"'+(LA.has?'':' disabled')+'>Buat &amp; terbitkan kode</button></div>'+
@@ -3543,10 +3690,10 @@ function laCard(){
  h+='</section>';
  h+=laMemCard();
  var H=laHist().slice().reverse().slice(0,20);
- h+='<section class="card stack"><h3 style="margin:0">Riwayat di perangkat ini</h3>'+(H.length?H.map(function(r){return'<div class="small" style="border-top:1px solid var(--line,#ddd);padding:6px 0"><b>'+esc(r.n)+'</b> · '+esc(LA_PLAN[r.p]||r.p)+'<br><span class="muted">'+esc(r.h)+' · berlaku sampai '+esc(laFmt(r.e))+'</span></div>';}).join('')+'<div class="row"><button class="btn sm" data-act="la-csv">Unduh CSV</button></div>':'<p class="muted small" style="margin:0">Belum ada kode yang diterbitkan dari perangkat ini.</p>')+'</section>';
+ h+='<section class="card stack"><h3 style="margin:0">Riwayat di perangkat ini</h3>'+(H.length?H.map(function(r){return'<div class="small" style="border-top:1px solid var(--line,#ddd);padding:6px 0"><b>'+esc(r.n)+'</b> · '+esc(LA_PLAN[r.p]||r.p)+'<br><span class="muted">'+esc(r.h)+((r.j||1)>1?' · jatah '+r.j:'')+' · berlaku sampai '+esc(laFmt(r.e))+'</span></div>';}).join('')+'<div class="row"><button class="btn sm" data-act="la-csv">Unduh CSV</button></div>':'<p class="muted small" style="margin:0">Belum ada kode yang diterbitkan dari perangkat ini.</p>')+'</section>';
  return h;}
 document.addEventListener('input',function(e){var t=e.target;if(!t||!t.id||t.id.indexOf('la-')!==0)return;
- var m={'la-hw':'hw','la-nm':'nm','la-wa':'wa','la-dy':'dy','la-pin':'pin'}[t.id];if(m)LA[m]=t.value;});
+ var m={'la-hw':'hw','la-nm':'nm','la-wa':'wa','la-dy':'dy','la-pin':'pin','la-j':'j'}[t.id];if(m)LA[m]=t.value;});
 document.addEventListener('change',function(e){var t=e.target;if(!t||!t.id)return;
  if(t.id==='la-pk'){LA.pk=t.value;render();}
  if(t.id==='la-kf'&&t.files&&t.files[0]){var f=t.files[0];
@@ -3563,7 +3710,7 @@ document.addEventListener('click',function(e){
  if(a==='la-wa'){if(!LA.last)return;var n=String(LA.wa||'').replace(/\D/g,'');if(n.indexOf('0')===0)n='62'+n.slice(1);
   var tx='Halo '+LA.last.n+', berikut kode lisensi Kasir Servis Pro ('+(LA_PLAN[LA.last.p]||LA.last.p)+', berlaku sampai '+laFmt(LA.last.e)+').\nSalin seluruh kode di bawah, lalu tempel di layar aktivasi:\n\n'+LA.key;
   window.open('https://wa.me/'+n+'?text='+encodeURIComponent(tx),'_blank');return;}
- if(a==='la-csv'){var H=laHist(),csv='Tanggal terbit,Nama,HWID,Paket,Berlaku sampai,WhatsApp\n'+H.map(function(r){return[new Date(r.i).toISOString().slice(0,10),r.n,r.h,r.p,r.e?new Date(r.e).toISOString().slice(0,10):'seumur hidup',r.wa||''].map(function(v){return'"'+String(v).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+ if(a==='la-csv'){var H=laHist(),csv='Tanggal terbit,Nama,HWID,Paket,Jatah perangkat,Berlaku sampai,WhatsApp\n'+H.map(function(r){return[new Date(r.i).toISOString().slice(0,10),r.n,r.h,r.p,r.j||1,r.e?new Date(r.e).toISOString().slice(0,10):'seumur hidup',r.wa||''].map(function(v){return'"'+String(v).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
   var u=URL.createObjectURL(new Blob([csv],{type:'text/csv'})),l=document.createElement('a');l.href=u;l.download='riwayat-lisensi.csv';l.click();return;}
  if(a==='la-gen'){
   var hw=String(LA.hw).trim().toUpperCase(),nm=String(LA.nm).trim(),pk=LA.pk;
@@ -3576,14 +3723,14 @@ document.addEventListener('click',function(e){
   var H0=laHist(),warn=(pk==='trial'&&H0.some(function(r){return r.h===hw&&r.p==='trial';}))?' Peringatan: HWID ini pernah mendapat trial.':'';
   laGet().then(function(priv){
    if(!priv)return fail('Kunci belum dipasang.');
-   var now=Date.now(),pl={h:hw,p:pk,n:nm,i:now,e:days?now+days*864e5:0};
+   var jt=Math.max(1,Math.min(20,Math.floor(+LA.j)||1)),now=Date.now(),pl={h:hw,p:pk,n:nm,i:now,e:days?now+days*864e5:0};if(jt>1)pl.j=jt;
    var data='KSP1.'+laB64u(new TextEncoder().encode(JSON.stringify(pl)));
    return crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},priv,new TextEncoder().encode(data)).then(function(sig){
-    LA.key=data+'.'+laB64u(sig);LA.last=pl;LA.msg='Kode dibuat. Berlaku sampai: '+laFmt(pl.e)+'.'+warn;LA.err=!!warn&&false;LA.pin='';
-    H0.push({i:now,n:nm,h:hw,p:pk,e:pl.e,wa:String(LA.wa||'').trim()});try{localStorage.setItem('kp-lic-hist',JSON.stringify(H0));}catch(x){}
+    LA.key=data+'.'+laB64u(sig);LA.last=pl;LA.msg='Kode dibuat'+(jt>1?' (lisensi toko, jatah '+jt+' perangkat)':'')+'. Berlaku sampai: '+laFmt(pl.e)+'.'+warn;LA.err=!!warn&&false;LA.pin='';
+    H0.push({i:now,n:nm,h:hw,p:pk,j:jt,e:pl.e,wa:String(LA.wa||'').trim()});try{localStorage.setItem('kp-lic-hist',JSON.stringify(H0));}catch(x){}
     try{logAct('Terbitkan lisensi netral',nm+' · '+(LA_PLAN[pk]||pk));}catch(x){}
     render();
-    if(hasServer())api({action:'mem_add',nama:nm,hwid:hw,wa:String(LA.wa||'').trim(),paket:LA_PLAN[pk]||pk,e:pl.e}).then(function(r){
+    if(hasServer())api({action:'mem_add',nama:nm,hwid:hw,wa:String(LA.wa||'').trim(),paket:(LA_PLAN[pk]||pk)+(jt>1?' · toko '+jt+' perangkat':''),e:pl.e}).then(function(r){
      if(r&&r.error==='auth'){sessionExpired();return;}
      if(r&&r.ok){LA.msg+=' Tercatat di Sheet.';LA.mem=null;LA.memErr='';laMemLoad();}
      else{LA.msg+=' Belum tercatat di Sheet ('+errMsg(r&&r.error)+'). Kode tetap sah dan ada di riwayat perangkat ini.';LA.err=true;}
