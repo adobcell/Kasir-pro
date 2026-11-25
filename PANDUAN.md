@@ -1,4 +1,4 @@
-# Panduan Pasang & Pakai — Kasir Servis Pro v9
+# Panduan Pasang & Pakai — Kasir Servis Pro v10.33
 
 ## Isi paket
 | File | Fungsi | Taruh di mana |
@@ -63,7 +63,7 @@ Isian di Input Data (semua opsional, cukup ketuk): kunci layar (tombol Tidak ada
 - Sesi terikat ke perangkat: token yang disalin ke HP/PC lain tidak berlaku. Owner bisa **Blokir** atau **Hapus** perangkat kapan saja — staf di perangkat itu langsung dikeluarkan.
 - Hanya Owner yang bisa mengatur. Kunci staf bisa dimatikan sementara (kotak centang di panel). **Kunci Owner** (opsional, default mati) mengikat akun Owner ke perangkat tertentu. Terkunci? Jalankan `bukaKunciPerangkatOwner` (atau `bukaSemuaKunciPerangkat`) di editor Apps Script.
 - Daftar perangkat juga ada di sheet **Perangkat**; setiap persetujuan/penolakan tercatat di Aktivitas.
-- Batas: ID perangkat disimpan di browser/aplikasi (bukan nomor seri hardware). Hapus data browser = perangkat dianggap baru dan perlu disetujui lagi. Setelah memasang versi ini, semua staf harus masuk ulang dan disetujui sekali.
+- Batas: ID perangkat disimpan di browser/aplikasi (bukan nomor seri hardware; lihat bagian L untuk penguatannya). Hapus data browser = perangkat dianggap baru dan perlu disetujui lagi. Setelah memasang versi ini, semua staf harus masuk ulang dan disetujui sekali.
 
 ## I. Hak akses per peran & sistem pendapatan teknisi
 | Peran | Menu | Batas |
@@ -88,3 +88,45 @@ Isian di Input Data (semua opsional, cukup ketuk): kunci layar (tombol Tidak ada
 - Jatah dihitung dari semua perangkat berstatus Disetujui (termasuk perangkat Owner). Bila penuh, persetujuan ditolak sampai ada perangkat yang dihapus/diblokir atau lisensi diperbesar.
 - Owner mengirim jatah ke server otomatis saat membuka Atur › Perangkat setelah login. Server di Google Sheet/Cara 3 yang menegakkan batas ini; untuk Code.gs perlu versi v10.31 (tempel Code.gs terbaru lalu Deploy versi baru).
 - Batas: lisensi tetap diperiksa di perangkat dan bisa diakali oleh yang paham teknis. Kode toko sebaiknya hanya dibagikan ke staf.
+
+## L. Pakai di PC / laptop
+1. **Browser:** Chrome atau Edge (Firefox dan Safari tidak mendukung cetak Bluetooth).
+2. **Pasang sebagai aplikasi:** klik ikon pasang di ujung kolom alamat, atau menu ⋮ › Cast, save, and share › **Install page as app**. Aplikasi punya ikon sendiri dan bisa disematkan ke taskbar. Di layar login PC juga ada kartu petunjuk dan tombol **Pasang sekarang**.
+3. **Satu PC, satu profil browser.** Kode perangkat (dan HWID untuk versi netral) disimpan di browser. Buka selalu dari profil yang sama; jangan hapus "data situs/cookies" dan jangan pakai Incognito. Pindah dari Chrome ke Edge dihitung perangkat baru.
+4. **Aturan Owner: 1 HP + 1 PC.** Daftarkan PC kasir utama. Untuk mengganti PC, hapus dulu perangkat lama di Atur › Perangkat.
+5. **Printer:** thermal Bluetooth dipasangkan dulu di Bluetooth Windows lalu dipilih dari aplikasi; printer USB/Wi-Fi memakai dialog cetak Windows.
+6. **Login Google (Cara 3):** pakai akun Google yang sama dengan di HP; izinkan popup bila diblokir.
+7. Kartu **Atur › Perangkat** menampilkan status: browser, aplikasi terpasang, dukungan Bluetooth, dan penyimpanan permanen.
+
+### Penguatan ID perangkat (v10.33)
+- Kode perangkat dan HWID kini disimpan di **empat tempat sekaligus** (localStorage, cookie, IndexedDB, plus permintaan penyimpanan permanen). Jika satu tempat terhapus, kode dipulihkan dari yang lain. Kode lisensi (versi netral) ikut dicadangkan di IndexedDB.
+- **Sidik jari perangkat:** aplikasi mencatat ciri perangkat (platform, jumlah core CPU, memori, GPU). Jika profil browser **disalin ke PC lain** dan 2 ciri atau lebih berbeda, kode perangkat dan HWID otomatis diganti baru dan kode lisensi salinan dilepas. Salinan itu harus disetujui ulang Owner atau diaktivasi ulang.
+- Perubahan kecil (ganti monitor, pembaruan driver, pindah zona waktu) **tidak** memicu penggantian.
+- Batas yang jujur: ini bukan nomor seri hardware, karena browser tidak diizinkan membacanya. Orang yang paham teknis tetap bisa mengakalinya. Untuk keamanan nyata, andalkan persetujuan perangkat oleh Owner (bagian H) dan batas jatah (bagian K).
+
+## M. Ringkasan fitur menurut peran
+| Fitur | Owner | Admin depan | Teknisi |
+|---|---|---|---|
+| Input Data (cek dulu / langsung) + Katalog harga | ✅ | ✅ | - |
+| Nota: buat, cetak, WhatsApp, status | ✅ | ✅ | - |
+| Edit nota | Semua nota (+ status, bayar, teknisi, tanggal) | Hanya nota belum Selesai/Diambil (data pelanggan, keluhan, item, harga) | - |
+| Kasbon | Lihat dan kelola semua | **Input kasbon baru saja** | Lihat milik sendiri |
+| Stok | Penuh | Lihat saja | - |
+| Absen, SOP, Tata tertib | ✅ | Absen, SOP | Absen, SOP, Tata tertib |
+| Gaji, biaya toko, laporan, tarif bagi hasil | ✅ | - | Penghasilan sendiri |
+| Pengguna, Perangkat, Katalog (atur), Lisensi | ✅ | - | - |
+| Printer dan Tampilan | ✅ | ✅ | - |
+
+## N. Masalah umum
+- **Versi lama masih tampil:** tutup aplikasi sepenuhnya lalu buka lagi (satu atau dua kali). Cek nomor versi di Atur. Setelah mengunggah ke GitHub, tunggu titik oranye di commit berubah hijau.
+- **Banner "had recent pushes" di GitHub:** cabang tambahan; abaikan atau hapus. Saat unggah, pilih "Commit directly to the main branch".
+- **Perangkat dianggap baru:** data situs terhapus atau profil browser berbeda. Owner menyetujui ulang di Atur › Perangkat.
+- **Jatah perangkat penuh:** hapus atau blokir perangkat lama, atau minta lisensi dengan jatah lebih besar.
+- **Fitur baru tidak jalan di Sheet lama:** tempel `Code.gs` terbaru di Apps Script lalu Deploy › versi baru. Sheet salinan template harus diganti kodenya satu per satu.
+- **Kasbon atau edit nota dari kasir tidak muncul di Owner:** pastikan Code.gs sudah versi terbaru dan HP kasir sudah sinkron (tombol status di kiri atas).
+
+## O. Riwayat versi singkat
+- v10.30: Katalog harga, Cara 3 (masuk dengan Google).
+- v10.31: Kasbon input untuk Admin depan, lisensi toko dengan jatah perangkat.
+- v10.32: Admin depan bisa edit nota yang belum selesai.
+- v10.33: Penguatan ID perangkat dan HWID, panduan PC.

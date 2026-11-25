@@ -861,7 +861,7 @@ function loginHTML(){
  (loginD.err?'<div class="badge bad" role="alert" style="white-space:normal">'+esc(loginD.err)+'</div>':'')+
  '<button type="button" class="btn pri" style="padding:.8rem" data-act="login"'+(loginD.busy?' disabled':'')+'>'+(loginD.busy?'Memeriksa…':'Masuk')+'</button>'+
  (hasUrl?'<div class="small muted" style="text-align:center">Server: tersimpan di perangkat ini. <button type="button" class="linkbtn" data-act="login-url">Ganti</button></div>':'')+
- '</form>'+
+ '</form>'+pcCard(false)+
  (SYNC.url?'':'<div class="card stack"><span class="small muted">Belum memakai Google Sheets? Anda bisa memakai aplikasi ini sendiri di perangkat ini tanpa server (data hanya tersimpan di perangkat ini).</span><div><button class="btn sm" data-act="login-local">Pakai mode lokal (tanpa server)</button></div></div>')+'</div>';}
 function render0(){
  var ae=document.activeElement,id=ae&&ae.id,ss=null,se=null,y=window.scrollY;
@@ -1466,7 +1466,7 @@ function aturBody(){
   '<div class="row"><button class="btn pri" data-act="sy-test">Hubungkan &amp; uji</button><button class="btn" data-act="sy-now">Sinkronkan sekarang</button></div>'+
   '<div class="row"><button class="btn sm" data-act="sy-pull"'+(hasServer()?'':' disabled')+'>Ambil ulang semua dari Sheet</button><button class="btn sm danger" data-act="sy-off">Putuskan</button></div></section>';}
  if(aturTab==='pengguna')h+=penggunaBody();
- if(aturTab==='perangkat')h+=devAdminHTML();
+ if(aturTab==='perangkat')h+=devAdminHTML()+pcCard(true);
  if(aturTab==='katalog')h+=katAdmin();
  if(aturTab==='data'){
   h+='<section class="card stack"><h2>Cadangan &amp; ekspor</h2><div class="row"><button class="btn" data-act="exp-tx">Unduh nota bulan ini (CSV)</button><button class="btn" data-act="exp-exp">Unduh pengeluaran (CSV)</button></div>'+
@@ -2878,7 +2878,7 @@ function stCls(t){return' st-'+String(statusOf(t)||'').toLowerCase().replace(/[^
 /* ===== v10: kunci perangkat ===== */
 var DEVLOST=0,DEV={list:null,users:[],devLock:true,ownerLock:false,me:'',busy:false,err:'',at:0,armed:null,tried:false};
 function devId(){
- var k='kp-dev',v='';try{v=localStorage.getItem(k)||'';}catch(e){}
+ kpFpGuard();var k='kp-dev',v='';try{v=localStorage.getItem(k)||'';}catch(e){}
  if(!/^[A-Za-z0-9]{20,40}$/.test(v)){v=devCk();if(v){try{localStorage.setItem(k,v);}catch(e){}}}
  if(!/^[A-Za-z0-9]{20,40}$/.test(v)){
   var al='ABCDEFGHJKMNPQRSTVWXYZ23456789',a=new Uint8Array(24);
@@ -3434,7 +3434,7 @@ function absProofCard(){
 function absAdminCard(){return absAdminCard0()+absProofCard();}
 function vAbsenOwner(){return'<section class="card stack">'+geoBox()+'</section><section class="card"><span class="small muted">Rekap kehadiran seluruh tim. Owner bisa mengisi/mengoreksi hadir, izin, sakit, atau alpa tiap karyawan.</span></section>'+absAdminCard();}
 /* ===== v10.19: pembaruan otomatis dari GitHub ===== */
-var APP_VER='10.32';
+var APP_VER='10.33';
 function verOf(h){var m=/APP_VER='([^']+)'/.exec(h||'');return m?m[1]:'';}
 var updBusy=false,updLast=0;
 function applyUpdate(){
@@ -3529,6 +3529,44 @@ function devCkSet(v){try{document.cookie='kp_dev='+v+'; max-age=63072000; path=/
    }catch(e){}});}
  setTimeout(sync,250);
 })();
+/* ===== v10.33: perkuat ID perangkat (sidik jari perangkat) + panduan PC =====
+   Profil browser yang disalin ke PC lain membawa localStorage, cookie, dan IndexedDB. Untuk mendeteksinya,
+   ciri perangkat (platform, jumlah core, memori, GPU) disimpan bersama kode. Bila 2 ciri atau lebih berbeda,
+   kode perangkat dan HWID diganti baru, sehingga salinan itu harus disetujui/diaktivasi ulang. */
+var DEVP=false,_fpDone=false;
+function kpFpNow(){var c={p:'',c:0,m:0,g:'',z:''};
+ try{c.p=String((navigator.userAgentData&&navigator.userAgentData.platform)||navigator.platform||'');}catch(e){}
+ try{c.c=+navigator.hardwareConcurrency||0;}catch(e){}
+ try{c.m=+navigator.deviceMemory||0;}catch(e){}
+ try{var cv=document.createElement('canvas'),gl=cv.getContext('webgl')||cv.getContext('experimental-webgl');if(gl){var ex=gl.getExtension('WEBGL_debug_renderer_info');c.g=String((ex?gl.getParameter(ex.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER))||'').slice(0,80);}}catch(e){}
+ try{c.z=Intl.DateTimeFormat().resolvedOptions().timeZone||'';}catch(e){}
+ return c;}
+function kpFpDiff(a,b){var n=0;['p','c','m','g'].forEach(function(k){if(a&&b&&a[k]&&b[k]&&a[k]!==b[k])n++;});return n;}
+function kpIdbDel(keys){try{var r=indexedDB.open('kp-meta',1);r.onupgradeneeded=function(){r.result.createObjectStore('k');};r.onsuccess=function(){try{var st=r.result.transaction('k','readwrite').objectStore('k');keys.forEach(function(k){st.delete(k);});}catch(e){}};}catch(e){}}
+function kpFpGuard(){
+ if(_fpDone)return;_fpDone=true;
+ var cur=kpFpNow(),st=null;try{st=JSON.parse(localStorage.getItem('kp-fp')||'null');}catch(e){}
+ if(!st){try{localStorage.setItem('kp-fp',JSON.stringify(cur));}catch(e){}return;}
+ var d=kpFpDiff(st,cur);
+ if(d>=2){
+  ['kp-dev','ksp-hwid','ksp-lic'].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
+  try{document.cookie='kp_dev=; max-age=0; path=/';document.cookie='ksp_hw=; max-age=0; path=/';}catch(e){}
+  kpIdbDel(['dev','hw','lic']);
+  try{localStorage.setItem('kp-fp',JSON.stringify(cur));localStorage.setItem('kp-moved','1');}catch(e){}
+ }else if(d>0||st.z!==cur.z){try{localStorage.setItem('kp-fp',JSON.stringify(cur));}catch(e){}}}
+setTimeout(function(){try{if(localStorage.getItem('kp-moved')){localStorage.removeItem('kp-moved');toast('Perangkat ini terdeteksi berbeda dari yang tercatat (profil browser disalin ke perangkat lain?). Kode perangkat diganti, minta Owner menyetujui ulang.');}}catch(e){}},1800);
+try{if(navigator.storage&&navigator.storage.persisted)navigator.storage.persisted().then(function(v){DEVP=!!v;});}catch(e){}
+function pcCard(full){
+ var desk=false,sa=false;try{desk=matchMedia('(pointer:fine)').matches&&innerWidth>=900;sa=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;}catch(e){}
+ if(!full&&(!desk||sa))return'';
+ var u=navigator.userAgent||'',okb=/Chrome\//.test(u)||/Edg\//.test(u),bt=!!navigator.bluetooth;
+ return'<section class="card stack"><h2>'+(full?'Pakai di PC / laptop':'Membuka di PC / laptop?')+'</h2><ul class="small" style="margin:0;padding-left:1.1rem;display:grid;gap:5px">'+
+ '<li>Pakai <b>Chrome atau Edge</b> '+(okb?'<span class="badge good">OK</span>':'<span class="badge warn">browser ini kurang cocok</span>')+'</li>'+
+ '<li>Pasang sebagai aplikasi '+(sa?'<span class="badge good">sudah</span>':'<span class="badge warn">belum</span>')+(sa?'':(installEv?' <button type="button" class="btn sm pri" data-act="install">Pasang sekarang</button>':' (ikon pasang di kolom alamat, atau menu ⋮ › Install page as app)'))+'</li>'+
+ '<li>Selalu buka dari <b>profil browser yang sama</b>. Jangan hapus data situs dan jangan pakai Incognito, karena kode perangkat <b>'+devCode()+'</b> tersimpan di sana.</li>'+
+ '<li>Cetak Bluetooth '+(bt?'<span class="badge good">didukung</span>':'<span class="badge warn">tidak didukung di browser ini</span>')+'. Printer USB atau Wi-Fi: pakai dialog cetak Windows.</li>'+
+ (full?'<li>Penyimpanan permanen '+(DEVP?'<span class="badge good">aktif</span>':'<span class="badge warn">belum diberikan browser</span>')+'</li>':'')+
+ '</ul></section>';}
 /* ===== v10.30: Katalog harga jasa servis (kerusakan Level 1, 2, 3) =====
    Data di cfg.katalog = [{id,cat,name,l1,l2,l3,note}] dan cfg.katLv = [{n,d},{n,d},{n,d}] (ikut tersinkron lewat cfg).
    Owner mengatur di Atur > Katalog harga. Kasir (Owner/Admin depan) memilihnya dari layar Input / Edit nota. */
